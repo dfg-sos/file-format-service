@@ -1,0 +1,33 @@
+{
+  "version": "1.0.0",
+  "ontology_uri": "http://edamontology.org",
+  "description": "Mapping from EDAM ontology (adapted fork) format identifiers to module-local identifiers",
+  "mappings": {
+    "format_4100": "cog",
+    "format_4102": "dem",
+    "format_4103": "dsm",
+    "format_4104": "dtm",
+    "format_4105": "osm_json",
+    "format_4106": "geojson",
+    "format_4107": "geopackage",
+    "format_4108": "geoparquet",
+    "format_4109": "geotiff",
+    "format_4110": "geozarr",
+    "format_4111": "gml",
+    "format_4112": "gpx",
+    "format_4113": "grib",
+    "format_4114": "kml",
+    "format_4115": "netcdf",
+    "format_4116": "esrijson",
+    "format_4117": "osm_xml",
+    "format_4118": "pbf",
+    "format_4119": "shapefile",
+    "format_4120": "vrt",
+    "format_4121": "wkb",
+    "format_4122": "wkt",
+    "format_4123": "xdmf",
+    "format_webprotege_001": "gis_data",
+    "format_webprotege_002": "raster",
+    "format_webprotege_003": "vector"
+  }
+}

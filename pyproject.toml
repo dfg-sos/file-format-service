@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sos_file_format_service*"]
+
+[project]
+name = "SOS-File-Format-Service"
+version = "0.1.0"
+requires-python = ">=3.14"
+description = "REST API service for validating Earth Observation (EO) file formats and checking ontology-based format compatibility."
+readme = "README.md"
+authors = [
+    { name = "Lorenz Gruber", email = "lorenz.gruber@uni-wuerzburg.de" },
+]
+
+dependencies = [
+    "uvicorn[standard]",
+    "fastapi",
+    "python-multipart",
+    "pydantic-settings",
+    "pydantic",
+    "aiofiles",
+    # eo-format-validator via Git dependency (uses Git+SSH authentication)
+    "format-validator @ git+ssh://git@gitlab2.informatik.uni-wuerzburg.de/descartes/sos/eo-format-validator.git@main",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "pytest-cov",
+    "httpx>=0.27",
+    "ruff",
+    "mypy>=1.10",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra -q --strict-markers"
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (require full app)",
+]
+
+[tool.coverage.run]
+source = ["sos_file_format_service"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
