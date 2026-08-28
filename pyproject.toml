@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["sos_file_format_service*"]
 
 [project]
 name = "SOS-File-Format-Service"
@@ -23,6 +22,7 @@ dependencies = [
     "pydantic-settings",
     "pydantic",
     "aiofiles",
+    "rdflib",
     # eo-format-validator via Git dependency (uses Git+SSH authentication)
     "format-validator @ git+ssh://git@gitlab2.informatik.uni-wuerzburg.de/descartes/sos/eo-format-validator.git@main",
 ]
