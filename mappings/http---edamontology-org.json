@@ -26,8 +26,8 @@
     "format_4121": "wkb",
     "format_4122": "wkt",
     "format_4123": "xdmf",
-    "format_webprotege_001": "gis_data",
-    "format_webprotege_002": "raster",
-    "format_webprotege_003": "vector"
+    "format_4124": "gis_data",
+    "format_4125": "raster",
+    "format_4126": "vector"
   }
 }
