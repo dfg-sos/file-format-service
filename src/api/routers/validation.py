@@ -67,7 +67,7 @@ async def validate_file(
         ..., description="Format identifier in the given ontology (e.g. format_4119)."
     ),
     mode: str = Form(
-        default="full",
+        default="basic",
         description="Validation mode: basic, structural, crs, or full.",
     ),
     translator: FormatTranslator = Depends(get_format_translator),
