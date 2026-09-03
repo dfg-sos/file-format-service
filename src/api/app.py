@@ -10,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from api.routers import compatibility, validation
+from api.routers import compatibility, format_info, validation
 from config import Settings
 
 
@@ -44,6 +44,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # --- routers -------------------------------------------------------------
     app.include_router(validation.router, prefix="/api/v1")
     app.include_router(compatibility.router, prefix="/api/v1")
+    app.include_router(format_info.router, prefix="/api/v1")
 
     # --- exception handlers --------------------------------------------------
     @app.exception_handler(StarletteHTTPException)

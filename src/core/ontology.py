@@ -180,6 +180,52 @@ class FormatOntology:
             parents.append(str(o))
         return parents
 
+    # ------------------------------------------------------------------
+    # Format introspection helpers
+    # ------------------------------------------------------------------
+
+    def get_label(self, fmt: str) -> Optional[str]:
+        """Return the ``rdfs:label`` of ``fmt``, if any."""
+        fmt_uri = URIRef(self._expand_id(fmt))
+        for _s, _p, o in self.graph.triples((fmt_uri, RDFS.label, None)):
+            return str(o)
+        return None
+
+    def get_comment(self, fmt: str) -> Optional[str]:
+        """Return the ``rdfs:comment`` of ``fmt``, if any."""
+        fmt_uri = URIRef(self._expand_id(fmt))
+        for _s, _p, o in self.graph.triples((fmt_uri, RDFS.comment, None)):
+            return str(o)
+        return None
+
+    def get_children(self, fmt: str) -> list[str]:
+        """Return all direct child classes of ``fmt``.
+
+        Children are classes that have ``fmt`` as a ``rdfs:subClassOf``.
+        """
+        fmt_uri = URIRef(self._expand_id(fmt))
+        children = []
+        for s, _p, _o in self.graph.triples((None, RDFS.subClassOf, fmt_uri)):
+            children.append(str(s))
+        return children
+
+    def get_values(self, fmt: str, predicate: str) -> list[str]:
+        """Return all values for an arbitrary predicate URI.
+
+        Args:
+            fmt: The format identifier (short or full URI).
+            predicate: Full predicate URI (e.g. ``"http://edamontology.org/file_extension"``).
+
+        Returns:
+            List of matching values as strings.
+        """
+        fmt_uri = URIRef(self._expand_id(fmt))
+        pred_uri = URIRef(predicate)
+        values = []
+        for _s, _p, o in self.graph.triples((fmt_uri, pred_uri, None)):
+            values.append(str(o))
+        return values
+
     def get_equivalents(self, fmt: str) -> list[str]:
         """Return all equivalent classes of ``fmt``."""
         fmt_uri = URIRef(self._expand_id(fmt))

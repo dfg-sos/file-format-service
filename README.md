@@ -27,6 +27,7 @@ The service follows a layered architecture:
 | `GET` | `/health` | Health check probe |
 | `POST` | `/api/v1/validate` | Validate an uploaded file against a required format |
 | `POST` | `/api/v1/compatibility` | Check compatibility between two format identifiers |
+| `POST` | `/api/v1/format-info` | Retrieve detailed metadata for a format from an ontology |
 
 ### Example: Validate a File
 
@@ -50,6 +51,37 @@ curl -X POST "http://localhost:8000/api/v1/compatibility" \
     "actual_format": "format_4119",
     "ontology_schema_url": "https://example.org/ontology.owl"
   }'
+```
+
+### Example: Format Info
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/format-info" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format_identifier": "format_4119",
+    "ontology_schema_url": "https://example.org/ontology.owl"
+  }'
+```
+
+**Response (excerpt):**
+
+```json
+{
+  "format_uri": "http://edamontology.org/format_4119",
+  "label": "Shapefile",
+  "comment": "Shapefile is a composite format including 3 mandatory files...",
+  "parents": [
+    "http://edamontology.org/format_2333",
+    "http://edamontology.org/format_4126"
+  ],
+  "children": [],
+  "equivalents": [],
+  "file_extensions": ["dbf", "shp", "shx"],
+  "media_type": "x-gis/x-shapefile (not in IANA)",
+  "see_also": ["https://en.wikipedia.org/wiki/Shapefile"],
+  "documentation": ["https://www.esri.com/..."]
+}
 ```
 
 The service fetches the ontology once, infers its namespace automatically, and caches the parsed graph for subsequent requests with the same `ontology_schema_url`.
