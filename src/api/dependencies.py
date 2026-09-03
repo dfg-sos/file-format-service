@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastapi import Depends, Form
 
-from api.schemas.validation import ValidationRequestSchema
+from api.schemas.validation import FileFormatValidationRequest
 from compatibility import FormatOntology
 from config import Settings
 from format_validator import FormatTranslator
@@ -57,9 +57,9 @@ def get_validation_request(
         default="basic",
         description="Validation mode: basic, structural, crs, or full.",
     ),
-) -> ValidationRequestSchema:
-    """Group multipart form fields into a ``ValidationRequestSchema`` DTO."""
-    return ValidationRequestSchema(
+) -> FileFormatValidationRequest:
+    """Group multipart form fields into a ``FileFormatValidationRequest`` DTO."""
+    return FileFormatValidationRequest(
         ontology_namespace=ontology_namespace,
         format_identifier=format_identifier,
         mode=mode,

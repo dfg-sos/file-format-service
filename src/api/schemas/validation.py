@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-class ValidationRequestSchema(BaseModel):
+class FileFormatValidationRequest(BaseModel):
     """Request body for the file validation endpoint.
 
     These fields are sent as multipart form data alongside the uploaded file.
@@ -25,7 +25,7 @@ class ValidationRequestSchema(BaseModel):
     )
 
 
-class ValidationEvent(BaseModel):
+class FileFormatValidationEvent(BaseModel):
     """A single event (error, warning, or info) emitted during validation."""
 
     message: str
@@ -34,7 +34,7 @@ class ValidationEvent(BaseModel):
     cause: str | None = None
 
 
-class ValidationResponse(BaseModel):
+class FileFormatValidationResponse(BaseModel):
     """Response returned by the validation endpoint.
 
     The ``status`` field carries the exact validation outcome:
@@ -42,6 +42,6 @@ class ValidationResponse(BaseModel):
     """
 
     status: Literal["SUCCESS", "UNCERTAIN", "FAILURE"]
-    errors: list[ValidationEvent]
-    warnings: list[ValidationEvent]
-    infos: list[ValidationEvent]
+    errors: list[FileFormatValidationEvent]
+    warnings: list[FileFormatValidationEvent]
+    infos: list[FileFormatValidationEvent]

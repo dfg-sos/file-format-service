@@ -14,7 +14,7 @@ from fastapi.exceptions import HTTPException
 from adapter.request_builder import HTTPValidationRequestBuilder, ValidationRequestDTO
 from adapter.response_handler import HTTPValidationResponseHandler
 from api.dependencies import get_format_translator, get_validation_request
-from api.schemas.validation import ValidationRequestSchema, ValidationResponse
+from api.schemas.validation import FileFormatValidationRequest, FileFormatValidationResponse
 from format_validator import FormatTranslator, FormatValidator, ValidationMode
 
 router = APIRouter(tags=["validation"])
@@ -54,15 +54,15 @@ def _resolve_format(
 
 @router.post(
     "/validate",
-    response_model=ValidationResponse,
+    response_model=FileFormatValidationResponse,
     summary="Validate a file against a required format",
     response_description="Validation outcome with errors, warnings, and infos.",
 )
 async def validate_file(
     file: UploadFile = File(..., description="The file to validate."),
-    request: ValidationRequestSchema = Depends(get_validation_request),
+    request: FileFormatValidationRequest = Depends(get_validation_request),
     translator: FormatTranslator = Depends(get_format_translator),
-) -> ValidationResponse:
+) -> FileFormatValidationResponse:
     """Validate an uploaded file against the specified format.
 
     The format identifier is translated via ``FormatTranslator`` into a
@@ -93,7 +93,7 @@ async def validate_file(
         validator = FormatValidator(builder, handler)
         result = validator.run()
 
-        # The handler always returns a ValidationResponse model
+        # The handler always returns a FileFormatValidationResponse model
         return result  # type: ignore[return-value]
     finally:
         # --- cleanup ---------------------------------------------------------
