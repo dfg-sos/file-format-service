@@ -26,7 +26,7 @@ def _resolve_mode(mode: str) -> ValidationMode:
     Raises ``HTTPException`` when the mode is not recognised.
     """
     try:
-        return ValidationMode(mode.upper())
+        return ValidationMode(mode.lower())
     except ValueError as exc:
         valid_modes = [m.value for m in ValidationMode]
         raise HTTPException(

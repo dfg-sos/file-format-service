@@ -30,7 +30,7 @@ class HTTPValidationResponseHandler(ValidationResponseHandler):
         data = validation_result.to_dict()
 
         return FileFormatValidationResponse(
-            status=data["status"],
+            status=data["status"].upper(),
             errors=[FileFormatValidationEvent(**e) for e in data["errors"]],
             warnings=[FileFormatValidationEvent(**e) for e in data["warnings"]],
             infos=[FileFormatValidationEvent(**e) for e in data["infos"]],
