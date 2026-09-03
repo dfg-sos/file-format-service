@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import httpx
 
-from compatibility import FormatOntology
+from core import FormatOntology
 
 
 class OntologyRegistry:

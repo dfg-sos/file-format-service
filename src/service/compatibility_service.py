@@ -1,6 +1,6 @@
 """Business-layer service for ontology-based format compatibility checks."""
 
-from compatibility import CompatibilityResult, FormatOntology
+from core import CompatibilityResult, FormatOntology
 
 
 class CompatibilityService:

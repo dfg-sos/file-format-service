@@ -2,7 +2,7 @@
 from pathlib import Path
 import pytest
 
-from compatibility import CompatibilityResult, FormatOntology
+from core import CompatibilityResult, FormatOntology
 from service.compatibility_service import CompatibilityService
 from ..fixtures.ontology import ontology 
 

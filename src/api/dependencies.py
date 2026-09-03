@@ -10,7 +10,7 @@ from pathlib import Path
 from fastapi import Depends, Form
 
 from api.schemas.validation import FileFormatValidationRequest
-from compatibility import FormatOntology
+from core import FormatOntology
 from config import Settings
 from format_validator import FormatTranslator
 from service.ontology_registry import OntologyRegistry

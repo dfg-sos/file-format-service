@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from compatibility.ontology import FormatOntology
+from core.ontology import FormatOntology
 
 
 @pytest.fixture
