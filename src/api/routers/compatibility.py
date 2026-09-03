@@ -4,7 +4,8 @@ Performs ontology-based static compatibility checks between two format
 identifiers.
 """
 
-from fastapi import APIRouter
+import httpx
+from fastapi import APIRouter, HTTPException, status
 
 from api.dependencies import get_ontology_registry
 from api.schemas.compatibility import CompatibilityRequest, CompatibilityResponse
@@ -28,7 +29,18 @@ async def check_compatibility(
     ``rdfs:subClassOf`` and ``owl:equivalentClass`` relationships.
     """
     registry = get_ontology_registry()
-    ontology = await registry.resolve(request.ontology_schema_url)
+    try:
+        ontology = await registry.resolve(request.ontology_schema_url)
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Could not fetch ontology schema: {exc}",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid ontology schema: {exc}",
+        ) from exc
 
     result = CompatibilityService.check(
         expected=request.expected_format,

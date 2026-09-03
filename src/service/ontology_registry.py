@@ -25,6 +25,10 @@ class OntologyRegistry:
         Returns:
             A populated ``FormatOntology`` with namespace inference already
             applied.
+
+        Raises:
+            httpx.HTTPError: When the schema URL cannot be fetched.
+            ValueError: When the fetched content cannot be parsed as RDF.
         """
         if schema_url in self._cache:
             return self._cache[schema_url]
@@ -37,10 +41,13 @@ class OntologyRegistry:
             self._cache[schema_url] = ontology
             return ontology
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(schema_url, timeout=30.0, follow_redirects=True)
-            response.raise_for_status()
-            content = response.content
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(schema_url, timeout=30.0, follow_redirects=True)
+                response.raise_for_status()
+                content = response.content
+        except httpx.HTTPError as exc:
+            raise httpx.HTTPError(f"Could not fetch ontology from {schema_url}: {exc}") from exc
 
         # Try to determine RDF format from Content-Type or URL extension.
         content_type = response.headers.get("content-type", "")
@@ -50,7 +57,11 @@ class OntologyRegistry:
         elif "turtle" in content_type or schema_url.endswith(".ttl"):
             format_hint = "turtle"
 
-        ontology = FormatOntology.from_bytes(content, format=format_hint)
+        try:
+            ontology = FormatOntology.from_bytes(content, format=format_hint)
+        except Exception as exc:
+            raise ValueError(f"Could not parse ontology from {schema_url}: {exc}") from exc
+
         self._cache[schema_url] = ontology
         return ontology
 
