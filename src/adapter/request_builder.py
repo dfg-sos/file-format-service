@@ -26,7 +26,7 @@ class ValidationRequestDTO:
     need to depend on FastAPI / Pydantic types.
     """
 
-    ontology_uri: str
+    ontology_namespace: str
     format_identifier: str
     mode: ValidationMode
     file_path: Path
@@ -50,7 +50,7 @@ class HTTPValidationRequestBuilder(ValidationRequestBuilder):
         (the orchestrator will surface this as an uncertain result).
         """
         format_id: Optional[FormatIdentifier] = self.translator.to_local(
-            self.dto.format_identifier, self.dto.ontology_uri
+            self.dto.format_identifier, self.dto.ontology_namespace
         )
         if format_id is None:
             return None

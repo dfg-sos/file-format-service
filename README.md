@@ -7,15 +7,15 @@ The service bridges ontology-specific format identifiers (e.g. from the EDAM ont
 ## Features
 
 - **File Format Validation** — Upload a file and validate it against a required format using multiple validation modes (`basic`, `structural`, `crs`, `full`).
-- **Static Ontology-based Compatibility Checks** — Check whether one format is compatible with another by evaluating relationships between formats in a loaded OWL ontology.
-- **Format Introspection** — Query parent classes, query equivalent classes and the format clear name for any format identifier and its corresponding ontology.
+- **Dynamic Ontology-based Compatibility Checks** — Check whether one format is compatible with another by evaluating `rdfs:subClassOf` and `owl:equivalentClass` relationships in any user-supplied OWL/RDF ontology.
+- **Remote Ontology Support** — Ontologies are fetched on demand from a provided schema URL and cached in memory for subsequent requests.
 
 ## Architecture Overview
 
 The service follows a layered architecture:
 
 - **API Layer** (`api/`) — FastAPI routers, Pydantic request/response schemas, and exception handlers.
-- **Service Layer** (`service/`) — Business logic, primarily the `CompatibilityService` that wraps ontology queries.
+- **Service Layer** (`service/`) — Business logic, including `CompatibilityService` for ontology queries and `OntologyRegistry` for fetching and caching remote ontologies.
 - **Adapter Layer** (`adapter/`) — Bridges between HTTP API types and the external `format_validator` module (`HTTPValidationRequestBuilder`, `HTTPValidationResponseHandler`).
 - **Compatibility Layer** (`compatibility/`) — OWL/RDF ontology parsing and reasoning using `rdflib` (`FormatOntology`, `CompatibilityResult`).
 - **Configuration** (`config.py`) — Pydantic-settings based configuration with environment variable support.
@@ -33,10 +33,12 @@ The service follows a layered architecture:
 ```bash
 curl -X POST "http://localhost:8000/api/v1/validate" \
   -F "file=@/path/to/your/file.geojson" \
-  -F "ontology_uri=http://edamontology.org" \
+  -F "ontology_namespace=http://edamontology.org" \
   -F "format_identifier=format_4106" \
   -F "mode=full"
 ```
+
+> **Note:** The validation endpoint expects `ontology_namespace` (the ontology's base URI, used for format mapping lookup), while the compatibility endpoint expects `ontology_schema_url` (the URL to the actual OWL/RDF schema file).
 
 ### Example: Check Compatibility
 
@@ -46,9 +48,11 @@ curl -X POST "http://localhost:8000/api/v1/compatibility" \
   -d '{
     "expected_format": "format_4126",
     "actual_format": "format_4119",
-    "ontology_uri": "http://edamontology.org"
+    "ontology_schema_url": "https://example.org/ontology.owl"
   }'
 ```
+
+The service fetches the ontology once, infers its namespace automatically, and caches the parsed graph for subsequent requests with the same `ontology_schema_url`.
 
 ## Development
 
@@ -116,7 +120,7 @@ sos-file-format-service/
 │   │   ├── dependencies.py               # DI wiring (settings, services, translator)
 │   │   ├── routers/                      # Endpoints
 │   │   └── schemas/                      # DTOs
-│   ├── service/                          # Business layer for compatibility checks
+│   ├── service/                          # CompatibilityService & OntologyRegistry
 │   ├── compatibility/
 │   └── adapter/                          # Adapter classes for file format validator module
 ├── tests/
@@ -135,7 +139,6 @@ All configuration is handled via environment variables prefixed with `SOS_FFS_`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SOS_FFS_ONTOLOGY_PATH` | `ontology/edamontology_adapted.org.owl` | Path to the local OWL ontology file |
 | `SOS_FFS_MAPPINGS_DIR` | `mappings` | Directory containing (Ontology -> File Format) mapping files |
 | `SOS_FFS_HOST` | `0.0.0.0` | Bind host |
 | `SOS_FFS_PORT` | `8000` | Bind port |
@@ -154,6 +157,6 @@ Ensure the container has network access to `gitlab2.informatik.uni-wuerzburg.de`
 
 ### Runtime Requirements
 
-- The ontology file (`ontology/edamontology_adapted.org.owl`) must be present at runtime (or pointed to via `SOS_FFS_ONTOLOGY_PATH`).
+- Any OWL/RDF ontology used by the `/compatibility` endpoint must be reachable via its `ontology_schema_url` (HTTP/HTTPS or local `file://` URIs).
 - The mapping files in `mappings/` must be present for format translation to work.
 - SSH agent or deploy keys may be required at build time for the private `format-validator` dependency.

@@ -3,5 +3,6 @@
 *.egg-info
 dist
 __pycache__
+.pytest_cache
 # Cline
 .clinerules

@@ -1,6 +1,28 @@
 """Pydantic schemas for the ``/validate`` endpoint."""
 
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class ValidationRequestSchema(BaseModel):
+    """Request body for the file validation endpoint.
+
+    These fields are sent as multipart form data alongside the uploaded file.
+    """
+
+    ontology_namespace: str = Field(
+        ...,
+        description="Ontology namespace (base URI) that defines the format identifier.",
+    )
+    format_identifier: str = Field(
+        ...,
+        description="Format identifier in the given ontology (e.g. format_4119).",
+    )
+    mode: str = Field(
+        default="basic",
+        description="Validation mode: basic, structural, crs, or full.",
+    )
 
 
 class ValidationEvent(BaseModel):
@@ -15,12 +37,11 @@ class ValidationEvent(BaseModel):
 class ValidationResponse(BaseModel):
     """Response returned by the validation endpoint.
 
-    The ``valid`` flag is ``True`` only when the validation status is
-    ``SUCCESS``. Both ``FAILURE`` and ``UNCERTAIN`` yield ``valid=False``.
+    The ``status`` field carries the exact validation outcome:
+    ``SUCCESS``, ``UNCERTAIN``, or ``FAILURE``.
     """
 
-    status: str
-    valid: bool
+    status: Literal["SUCCESS", "UNCERTAIN", "FAILURE"]
     errors: list[ValidationEvent]
     warnings: list[ValidationEvent]
     infos: list[ValidationEvent]
