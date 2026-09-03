@@ -8,9 +8,9 @@ class CompatibilityRequest(BaseModel):
 
     expected_format: str = Field(..., description="The required / expected format identifier.")
     actual_format: str = Field(..., description="The provided / actual format identifier.")
-    ontology_uri: str = Field(
-        default="http://edamontology.org",
-        description="Ontology URI that defines the format identifiers.",
+    ontology_schema_url: str = Field(
+        ...,
+        description="URL to the OWL/RDF ontology schema file (e.g. https://example.org/ontology.owl).",
     )
 
 

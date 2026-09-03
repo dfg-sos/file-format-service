@@ -7,10 +7,13 @@ routers can receive them via ``Depends`` without manual construction.
 from functools import lru_cache
 from pathlib import Path
 
-from format_validator import FormatTranslator
+from fastapi import Depends, Form
 
+from api.schemas.validation import ValidationRequestSchema
+from compatibility import FormatOntology
 from config import Settings
-from service.compatibility_service import CompatibilityService
+from format_validator import FormatTranslator
+from service.ontology_registry import OntologyRegistry
 
 
 @lru_cache
@@ -27,10 +30,40 @@ def get_format_translator() -> FormatTranslator:
 
 
 @lru_cache
-def get_compatibility_service() -> CompatibilityService:
-    """Return cached ``CompatibilityService`` with the loaded ontology."""
-    settings = get_settings()
-    return CompatibilityService(settings)
+def get_ontology_registry() -> OntologyRegistry:
+    """Return cached ``OntologyRegistry`` for ontology fetch / caching."""
+    return OntologyRegistry()
+
+
+async def resolve_ontology(
+    ontology_schema_url: str,
+    registry: OntologyRegistry = Depends(get_ontology_registry),
+) -> FormatOntology:
+    """Resolve an ontology schema URL to a parsed ``FormatOntology``.
+
+    Uses the registry's in-memory cache to avoid repeated fetches.
+    """
+    return await registry.resolve(ontology_schema_url)
+
+
+def get_validation_request(
+    ontology_namespace: str = Form(
+        ..., description="Ontology namespace (base URI) that defines the format identifier."
+    ),
+    format_identifier: str = Form(
+        ..., description="Format identifier in the given ontology (e.g. format_4119)."
+    ),
+    mode: str = Form(
+        default="basic",
+        description="Validation mode: basic, structural, crs, or full.",
+    ),
+) -> ValidationRequestSchema:
+    """Group multipart form fields into a ``ValidationRequestSchema`` DTO."""
+    return ValidationRequestSchema(
+        ontology_namespace=ontology_namespace,
+        format_identifier=format_identifier,
+        mode=mode,
+    )
 
 
 def get_file_storage_path() -> Path:

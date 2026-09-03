@@ -1221,6 +1221,7 @@ dependencies = [
     { name = "aiofiles" },
     { name = "fastapi" },
     { name = "format-validator" },
+    { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -1230,7 +1231,6 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -1243,7 +1243,7 @@ requires-dist = [
     { name = "aiofiles" },
     { name = "fastapi" },
     { name = "format-validator", git = "ssh://git@gitlab2.informatik.uni-wuerzburg.de/descartes/sos/eo-format-validator.git?rev=main" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
+    { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pydantic" },
     { name = "pydantic-settings" },

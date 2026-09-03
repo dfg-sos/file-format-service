@@ -4,9 +4,9 @@ Performs ontology-based static compatibility checks between two format
 identifiers.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from api.dependencies import get_compatibility_service
+from api.dependencies import get_ontology_registry
 from api.schemas.compatibility import CompatibilityRequest, CompatibilityResponse
 from service.compatibility_service import CompatibilityService
 
@@ -21,17 +21,19 @@ router = APIRouter(tags=["compatibility"])
 )
 async def check_compatibility(
     request: CompatibilityRequest,
-    service: CompatibilityService = Depends(get_compatibility_service),
 ) -> CompatibilityResponse:
     """Check whether the *actual* format satisfies the *expected* format.
 
-    Uses the loaded OWL ontology to evaluate ``rdfs:subClassOf`` and
-    ``owl:equivalentClass`` relationships.
+    Resolves the ontology schema from the provided URL, then evaluates
+    ``rdfs:subClassOf`` and ``owl:equivalentClass`` relationships.
     """
-    result = service.check(
+    registry = get_ontology_registry()
+    ontology = await registry.resolve(request.ontology_schema_url)
+
+    result = CompatibilityService.check(
         expected=request.expected_format,
         actual=request.actual_format,
-        ontology_source=request.ontology_uri,
+        ontology=ontology,
     )
 
     return CompatibilityResponse(
@@ -39,5 +41,4 @@ async def check_compatibility(
         expected=result.expected,
         actual=result.actual,
         message=result.message,
-        ontology_source=result.ontology_source,
     )

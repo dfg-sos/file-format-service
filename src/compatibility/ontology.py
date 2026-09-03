@@ -10,44 +10,106 @@ The implementation follows the same recursive pattern used by
 from __future__ import annotations
 
 import logging
+from collections import Counter
 from pathlib import Path
 from typing import Optional, Set
 
-from rdflib import Graph, OWL, RDFS, URIRef
+from rdflib import Graph, OWL, RDFS, RDF, URIRef
 
 logger = logging.getLogger(__name__)
-
-
-def _expand_id(fmt: str) -> str:
-    EDAM_NAMESPACE = "http://edamontology.org/"
-    """Expand a short format identifier to a full URI if needed.
-
-    If ``fmt`` does not start with ``http://`` or ``https://``, it is
-    prefixed with the default EDAM namespace.
-    """
-    if fmt.startswith("http://") or fmt.startswith("https://"):
-        return fmt
-    return EDAM_NAMESPACE + fmt
 
 
 class FormatOntology:
     """Wraps an OWL/RDF ontology and provides format compatibility queries."""
 
-    def __init__(self, ontology_source: Optional[str | Path] = None):
-        """Load an ontology.
+    def __init__(self, graph: Graph, namespace: Optional[str] = None):
+        """Wrap an already parsed RDF graph.
+
+        Args:
+            graph: Pre-populated ``rdflib.Graph``.
+            namespace: The ontology namespace used to expand short format IDs.
+                If ``None``, it is inferred from the graph where possible.
+        """
+        self.graph = graph
+        self._namespace = namespace or self._infer_namespace()
+
+    @classmethod
+    def from_source(cls, ontology_source: str | Path) -> "FormatOntology":
+        """Load an ontology from a local file path or a resolvable URI.
 
         Args:
             ontology_source: Path to a local ``.owl`` file or a resolvable URI.
-                             If ``None``, the ontology is empty (only identity checks work).
+
+        Returns:
+            A populated ``FormatOntology`` instance.
         """
-        self.graph = Graph()
-        if ontology_source is not None:
-            try:
-                self.graph.parse(str(ontology_source))
-                logger.debug("Loaded ontology from %s", ontology_source)
-            except Exception as exc:
-                logger.warning("Could not load ontology from %s: %s", ontology_source, exc)
-                raise
+        graph = Graph()
+        try:
+            graph.parse(str(ontology_source))
+            logger.debug("Loaded ontology from %s", ontology_source)
+        except Exception as exc:
+            logger.warning("Could not load ontology from %s: %s", ontology_source, exc)
+            raise
+        return cls(graph=graph)
+
+    @classmethod
+    def from_bytes(cls, data: bytes, format: Optional[str] = None) -> "FormatOntology":
+        """Parse an ontology from raw bytes.
+
+        Args:
+            data: Raw RDF/OWL content.
+            format: RDF serialisation format (e.g. ``"xml"``, ``"turtle"``).
+                If ``None``, ``rdflib`` attempts to auto-detect.
+
+        Returns:
+            A populated ``FormatOntology`` instance.
+        """
+        graph = Graph()
+        try:
+            graph.parse(data=data, format=format)
+        except Exception as exc:
+            logger.warning("Could not parse ontology from bytes: %s", exc)
+            raise
+        return cls(graph=graph)
+
+    def _infer_namespace(self) -> Optional[str]:
+        """Attempt to infer the ontology namespace from the graph.
+
+        The primary strategy is to look for the ``owl:Ontology`` subject.
+        If that yields nothing, we fall back to the most common prefix among
+        ``owl:Class`` subjects.
+        """
+        # Strategy 1: owl:Ontology subject
+        for subject in self.graph.subjects(RDF.type, OWL.Ontology):
+            return str(subject)
+
+        # Strategy 2: most common prefix among owl:Class subjects
+        prefixes: Counter = Counter()
+        for subject in self.graph.subjects(RDF.type, OWL.Class):
+            uri = str(subject)
+            for sep in ("#", "/"):
+                if sep in uri:
+                    prefix = uri.rsplit(sep, 1)[0] + sep
+                    prefixes[prefix] += 1
+                    break
+
+        if prefixes:
+            return prefixes.most_common(1)[0][0]
+
+        return None
+
+    def _expand_id(self, fmt: str) -> str:
+        """Expand a short format identifier to a full URI using the inferred namespace.
+
+        If ``fmt`` already starts with ``http://`` or ``https://`` it is
+        returned unchanged. Otherwise it is prefixed with the ontology
+        namespace (if one was inferred).
+        """
+        if fmt.startswith("http://") or fmt.startswith("https://"):
+            return fmt
+        if self._namespace:
+            return self._namespace.rstrip("/") + "/" + fmt
+        return fmt
 
     # ------------------------------------------------------------------
     # Core logic (mirrors cwl-utils formatSubclassOf)
@@ -66,8 +128,8 @@ class FormatOntology:
         Returns:
             ``True`` if ``fmt`` is the same as, or a subclass of, ``cls``.
         """
-        fmt_uri = URIRef(_expand_id(fmt))
-        cls_uri = URIRef(_expand_id(cls))
+        fmt_uri = URIRef(self._expand_id(fmt))
+        cls_uri = URIRef(self._expand_id(cls))
 
         if fmt_uri == cls_uri:
             return True
@@ -112,7 +174,7 @@ class FormatOntology:
 
     def get_parents(self, fmt: str) -> list[str]:
         """Return all direct parent classes of ``fmt``."""
-        fmt_uri = URIRef(_expand_id(fmt))
+        fmt_uri = URIRef(self._expand_id(fmt))
         parents = []
         for _s, _p, o in self.graph.triples((fmt_uri, RDFS.subClassOf, None)):
             parents.append(str(o))
@@ -120,7 +182,7 @@ class FormatOntology:
 
     def get_equivalents(self, fmt: str) -> list[str]:
         """Return all equivalent classes of ``fmt``."""
-        fmt_uri = URIRef(_expand_id(fmt))
+        fmt_uri = URIRef(self._expand_id(fmt))
         eqs = []
         for _s, _p, o in self.graph.triples((fmt_uri, OWL.equivalentClass, None)):
             eqs.append(str(o))
