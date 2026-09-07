@@ -94,7 +94,6 @@ The service fetches the ontology once, infers its namespace automatically, and c
 
 - Python >= 3.14
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- SSH access to `gitlab2.informatik.uni-wuerzburg.de` (for the `format-validator` Git dependency) <!-- TODO:will be changed to a public GitHub Repository in the future -->
 
 ### Installation
 
@@ -179,18 +178,34 @@ All configuration is handled via environment variables prefixed with `SOS_FFS_`:
 
 ### Containerisation (Docker)
 
-A typical `Dockerfile` would:
+The `Dockerfile` builds on [`logru/format-validator-deps`](https://hub.docker.com/r/logru/format-validator-deps), which bundles the GDAL/GEOS/PROJ toolchain `format-validator`'s dependencies need to compile (namely `fiona`, which has no prebuilt wheel for Python 3.14 yet), plus `uv` and the app itself:
 
-1. Use a Python 3.14 base image.
-2. Install `uv`.
-3. Copy `pyproject.toml` and `uv.lock`, then run `uv sync`.
-4. Copy the `src/`, `ontology/`, and `mappings/` directories.
-5. Expose port `8000` and run `uvicorn main:app --app-dir src --host 0.0.0.0 --port 8000`.
+```shell
+docker build -t sos-file-format-service .
+docker run -p 8000:8000 sos-file-format-service
+```
 
-Ensure the container has network access to `gitlab2.informatik.uni-wuerzburg.de` during the build phase (or pre-build the `format-validator` wheel) because it is pulled via Git+SSH.
+#### docker compose
+
+`docker-compose.yml` runs the API alongside an `nginx` container that serves the adapted EDAM ontology (`tests/fixtures/edamontology_adapted.org.owl`) over HTTP, so it can be used as an `ontology_schema_url` without leaving the Docker network:
+
+```shell
+docker compose up --build
+```
+
+- API: `http://localhost:8000`
+- Ontology file: `http://localhost:8080/edamontology_adapted.org.owl` from the host, or `http://ontology/edamontology_adapted.org.owl` from the `api` container.
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/format-info" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format_identifier": "format_4119",
+    "ontology_schema_url": "http://ontology/edamontology_adapted.org.owl"
+  }'
+```
 
 ### Runtime Requirements
 
 - Any OWL/RDF ontology used by the `/compatibility` endpoint must be reachable via its `ontology_schema_url` (HTTP/HTTPS or local `file://` URIs).
 - The mapping files in `mappings/` must be present for format translation to work.
-- SSH agent or deploy keys may be required at build time for the private `format-validator` dependency.

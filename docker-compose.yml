@@ -1,0 +1,29 @@
+services:
+  api:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    environment:
+      SOS_FFS_MAPPINGS_DIR: mappings
+    depends_on:
+      - ontology
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Serves the adapted EDAM ontology over HTTP so it can be referenced as
+  # `ontology_schema_url=http://ontology/edamontology_adapted.org.owl`
+  # (or http://localhost:8080/edamontology_adapted.org.owl from the host)
+  # in /api/v1/compatibility and /api/v1/format-info requests.
+  ontology:
+    image: nginx:alpine
+    volumes:
+      - ./tests/fixtures/edamontology_adapted.org.owl:/usr/share/nginx/html/edamontology_adapted.org.owl:ro
+    ports:
+      - "8080:80"
+    restart: unless-stopped
