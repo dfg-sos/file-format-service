@@ -85,6 +85,8 @@ async def validate_file(
             format_identifier=request.format_identifier,
             mode=validation_mode,
             file_path=tmp_path,
+            expected_crs=request.expected_crs,
+            expected_geometry_type=request.expected_geometry_type,
         )
         builder = HTTPValidationRequestBuilder(dto, translator)
         handler = HTTPValidationResponseHandler()

@@ -21,7 +21,25 @@ class FileFormatValidationRequest(BaseModel):
     )
     mode: str = Field(
         default="basic",
-        description="Validation mode: basic, structural, crs, or full.",
+        description="Validation mode: basic, structural, or full.",
+    )
+    expected_crs: str | None = Field(
+        default=None,
+        description=(
+            "Expected coordinate reference system for FULL-mode metadata "
+            "validation, in any form accepted by pyproj (e.g. 'EPSG:4326', a "
+            "WKT string, or a proj4 string). Only checked in FULL mode."
+        ),
+    )
+    expected_geometry_type: str | None = Field(
+        default=None,
+        description=(
+            "Expected GeoJSON-style geometry type for FULL-mode metadata "
+            "validation (e.g. 'Point', 'MultiPolygon'), matched "
+            "case-insensitively. Only applies to vector formats and only "
+            "checked in FULL mode. Unrecognized names are treated as not "
+            "provided rather than rejected."
+        ),
     )
 
 

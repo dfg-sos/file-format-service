@@ -55,7 +55,15 @@ def get_validation_request(
     ),
     mode: str = Form(
         default="basic",
-        description="Validation mode: basic, structural, crs, or full.",
+        description="Validation mode: basic, structural, or full.",
+    ),
+    expected_crs: str | None = Form(
+        default=None,
+        description="Expected CRS for FULL-mode validation (any pyproj-recognized string).",
+    ),
+    expected_geometry_type: str | None = Form(
+        default=None,
+        description="Expected GeoJSON-style geometry type for FULL-mode validation on vector formats.",
     ),
 ) -> FileFormatValidationRequest:
     """Group multipart form fields into a ``FileFormatValidationRequest`` DTO."""
@@ -63,6 +71,8 @@ def get_validation_request(
         ontology_namespace=ontology_namespace,
         format_identifier=format_identifier,
         mode=mode,
+        expected_crs=expected_crs,
+        expected_geometry_type=expected_geometry_type,
     )
 
 

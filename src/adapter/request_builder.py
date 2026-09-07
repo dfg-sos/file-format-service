@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from format_validator import (
+    EOMetadata,
     FileInput,
     FormatIdentifier,
     FormatTranslator,
@@ -30,6 +31,8 @@ class ValidationRequestDTO:
     format_identifier: str
     mode: ValidationMode
     file_path: Path
+    expected_crs: Optional[str] = None
+    expected_geometry_type: Optional[str] = None
 
 
 class HTTPValidationRequestBuilder(ValidationRequestBuilder):
@@ -46,13 +49,27 @@ class HTTPValidationRequestBuilder(ValidationRequestBuilder):
     def build(self) -> Optional[ValidationRequest]:
         """Build and return a ``ValidationRequest``, or ``None`` on failure.
 
-        Returns ``None`` when the format identifier cannot be resolved
-        (the orchestrator will surface this as an uncertain result).
+        Returns ``None`` when the format identifier cannot be resolved, or
+        when the expected CRS / geometry type strings cannot be parsed into
+        an ``EOMetadata`` sidecar (e.g. an invalid CRS string) — in both
+        cases the orchestrator surfaces this as an uncertain result.
         """
         format_id: Optional[FormatIdentifier] = self.translator.to_local(
             self.dto.format_identifier, self.dto.ontology_namespace
         )
         if format_id is None:
+            return None
+
+        # ``EOMetadata.from_strings`` keeps CRS/geometry-type parsing (pyproj,
+        # shapely) inside the format_validator package; catching broadly here
+        # avoids this service needing to import pyproj just to name the
+        # exception type it can raise.
+        try:
+            metadata = EOMetadata.from_strings(
+                crs=self.dto.expected_crs,
+                geometry_type=self.dto.expected_geometry_type,
+            )
+        except Exception:
             return None
 
         file_input = FileInput(self.dto.file_path)
@@ -61,4 +78,5 @@ class HTTPValidationRequestBuilder(ValidationRequestBuilder):
             actual_file=file_input,
             format_identifier=format_id,
             mode=self.dto.mode,
+            metadata=metadata,
         )
