@@ -6,7 +6,7 @@ The service bridges ontology-specific format identifiers (e.g. from the EDAM ont
 
 ## Features
 
-- **File Format Validation** — Upload a file and validate it against a required format using multiple validation modes (`basic`, `structural`, `crs`, `full`).
+- **File Format Validation** — Upload a file and validate it against a required format using multiple validation modes (`basic`, `structural`, `full`). `full` mode also validates file metadata against optional expected values.
 - **Dynamic Ontology-based Compatibility Checks** — Check whether one format is compatible with another by evaluating `rdfs:subClassOf` and `owl:equivalentClass` relationships in any user-supplied OWL/RDF ontology.
 - **Remote Ontology Support** — Ontologies are fetched on demand from a provided schema URL and cached in memory for subsequent requests.
 
@@ -40,6 +40,8 @@ curl -X POST "http://localhost:8000/api/v1/validate" \
 ```
 
 > **Note:** The validation endpoint expects `ontology_namespace` (the ontology's base URI, used for format mapping lookup), while the compatibility endpoint expects `ontology_schema_url` (the URL to the actual OWL/RDF schema file).
+
+In `full` mode, additional optional fields let you validate a file's metadata against an expected value. For EO these include: `expected_crs` (any coordinate reference system string understood by `pyproj`, e.g. `EPSG:4326`) and `expected_geometry_type` (a GeoJSON-style geometry type such as `Point` or `MultiPolygon`, matched case-insensitively; only applies to vector formats). Omitting either field skips that check.
 
 ### Example: Check Compatibility
 
