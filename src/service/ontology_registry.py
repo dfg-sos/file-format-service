@@ -37,7 +37,10 @@ class OntologyRegistry:
         if parsed.scheme == "file":
             # Let rdflib infer the serialisation format from the file extension.
             path = Path(parsed.path)
-            ontology = FormatOntology.from_source(path)
+            try:
+                ontology = FormatOntology.from_source(path)
+            except Exception as exc:
+                raise ValueError(f"Could not parse ontology from {schema_url}: {exc}") from exc
             self._cache[schema_url] = ontology
             return ontology
 

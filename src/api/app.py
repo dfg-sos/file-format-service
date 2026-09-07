@@ -6,6 +6,7 @@ Wires all routers, exception handlers, and metadata together.
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -55,7 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def validation_exception_handler(request, exc: RequestValidationError):
         return JSONResponse(
             status_code=422,
-            content={"detail": exc.errors()},
+            content={"detail": jsonable_encoder(exc.errors())},
         )
 
     @app.get("/health", tags=["health"])
