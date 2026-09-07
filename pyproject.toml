@@ -24,8 +24,7 @@ dependencies = [
     "aiofiles",
     "httpx>=0.27",
     "rdflib",
-    # eo-format-validator via Git dependency (uses Git+SSH authentication)
-    "format-validator @ git+ssh://git@gitlab2.informatik.uni-wuerzburg.de/descartes/sos/eo-format-validator.git@main",
+    "format-validator @ git+https://github.com/dfg-sos/file-format-validator.git@main",
 ]
 
 [project.optional-dependencies]

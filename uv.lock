@@ -437,7 +437,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/51/e0/71b63839cc609e1d6
 [[package]]
 name = "format-validator"
 version = "1.0.0"
-source = { git = "ssh://git@gitlab2.informatik.uni-wuerzburg.de/descartes/sos/eo-format-validator.git?rev=main#b1af71b7e8822730b75f7f19c33d389ddddd739c" }
+source = { git = "https://github.com/dfg-sos/file-format-validator.git?rev=main#fa2c10550a524d86bcb79c8d021f2a4f8e39f66d" }
 dependencies = [
     { name = "cfgrib" },
     { name = "fiona" },
@@ -1261,7 +1261,7 @@ dev = [
 requires-dist = [
     { name = "aiofiles" },
     { name = "fastapi" },
-    { name = "format-validator", git = "ssh://git@gitlab2.informatik.uni-wuerzburg.de/descartes/sos/eo-format-validator.git?rev=main" },
+    { name = "format-validator", git = "https://github.com/dfg-sos/file-format-validator.git?rev=main" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pydantic" },
