@@ -158,6 +158,7 @@ sos-file-format-service/
 │   ├── unit/
 │   ├── integration/
 │   └── fixtures/
+├── ontology/                              # Ontology fixture + Dockerfile served by docker-compose
 ├── docker-compose.yml
 ├── Dockerfile
 ├── pyproject.toml                        # Project metadata, dependencies, tool config
@@ -188,7 +189,7 @@ docker run -p 8000:8000 sos-file-format-service
 
 #### docker compose
 
-`docker-compose.yml` runs the API alongside an `nginx` container that serves the adapted EDAM ontology (`tests/fixtures/edamontology_adapted.org.owl`) over HTTP, so it can be used as an `ontology_schema_url` without leaving the Docker network:
+`docker-compose.yml` runs the API alongside an `nginx` container that serves the adapted EDAM ontology (`ontology/edamontology_adapted.org.owl`) over HTTP, so it can be used as an `ontology_schema_url` without leaving the Docker network:
 
 ```shell
 docker compose up --build
