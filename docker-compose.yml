@@ -21,9 +21,8 @@ services:
   # (or http://localhost:8080/edam_eo.owl from the host)
   # in /api/v1/compatibility and /api/v1/format-info requests.
   ontology:
-    image: nginx:alpine
-    volumes:
-      - ./tests/fixtures/edamontology_adapted.org.owl:/usr/share/nginx/html/edam_eo.owl:ro
+    build:
+      context: ontology
     ports:
       - "8080:80"
     restart: unless-stopped

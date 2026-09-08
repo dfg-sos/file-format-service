@@ -19,7 +19,7 @@ def client() -> TestClient:
 
 @pytest.fixture
 def ontology_file() -> Path:
-    return Path(__file__).parent.parent / "fixtures" / "edamontology_adapted.org.owl"
+    return Path(__file__).parent.parent.parent / "ontology" / "edamontology_adapted.org.owl"
 
 
 @pytest.fixture
