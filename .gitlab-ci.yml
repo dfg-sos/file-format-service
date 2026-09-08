@@ -25,7 +25,7 @@ deploy-check:
   script:
     - docker compose up -d --build
     - >
-      for i in $(seq 1 10); do
+      for i in $(seq 1 20); do
         docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)" 2>/dev/null && break
         echo "api not ready yet, retrying..."
         sleep 2
