@@ -17,13 +17,13 @@ services:
     restart: unless-stopped
 
   # Serves the adapted EDAM ontology over HTTP so it can be referenced as
-  # `ontology_schema_url=http://ontology/edamontology_adapted.org.owl`
-  # (or http://localhost:8080/edamontology_adapted.org.owl from the host)
+  # `ontology_schema_url=http://ontology/edam_eo.owl` from the API container
+  # (or http://localhost:8080/edam_eo.owl from the host)
   # in /api/v1/compatibility and /api/v1/format-info requests.
   ontology:
     image: nginx:alpine
     volumes:
-      - ./tests/fixtures/edamontology_adapted.org.owl:/usr/share/nginx/html/edamontology_adapted.org.owl:ro
+      - ./tests/fixtures/edamontology_adapted.org.owl:/usr/share/nginx/html/edam_eo.owl:ro
     ports:
       - "8080:80"
     restart: unless-stopped

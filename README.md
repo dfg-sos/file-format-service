@@ -17,7 +17,7 @@ The service follows a layered architecture:
 - **API Layer** (`api/`) — FastAPI routers, Pydantic request/response schemas, and exception handlers.
 - **Service Layer** (`service/`) — Business logic, including `CompatibilityService` for ontology queries and `OntologyRegistry` for fetching and caching remote ontologies.
 - **Adapter Layer** (`adapter/`) — Bridges between HTTP API types and the external `format_validator` module (`HTTPValidationRequestBuilder`, `HTTPValidationResponseHandler`).
-- **Compatibility Layer** (`compatibility/`) — OWL/RDF ontology parsing and reasoning using `rdflib` (`FormatOntology`, `CompatibilityResult`).
+- **Core Layer** (`core/`) — OWL/RDF ontology parsing and reasoning using `rdflib` (`FormatOntology`, `CompatibilityResult`).
 - **Configuration** (`config.py`) — Pydantic-settings based configuration with environment variable support.
 
 ## API Endpoints
@@ -141,24 +141,25 @@ pytest --cov=sos_file_format_service --cov-report=term-missing
 
 ```
 sos-file-format-service/
-├── ontology/
-│   └── edamontology_adapted.org.owl      # EO-extension of the EDAM ontology
 ├── mappings/
 │   └── http---edamontology-org.json      # EDAM → validator format mappings
 ├── src/
 │   ├── main.py                           # Uvicorn entry point
 │   ├── config.py                         # Pydantic-settings configuration
+│   ├── core/                             # FormatOntology & CompatibilityResult
 │   ├── api/
 │   │   ├── app.py                        # FastAPI app factory
 │   │   ├── dependencies.py               # DI wiring (settings, services, translator)
-│   │   ├── routers/                      # Endpoints
+│   │   ├── routers/                      # Endpoints (validation, compatibility, format_info)
 │   │   └── schemas/                      # DTOs
 │   ├── service/                          # CompatibilityService & OntologyRegistry
-│   ├── compatibility/
 │   └── adapter/                          # Adapter classes for file format validator module
 ├── tests/
-│   ├── unit/                             
-│   └── integration/                 
+│   ├── unit/
+│   ├── integration/
+│   └── fixtures/
+├── docker-compose.yml
+├── Dockerfile
 ├── pyproject.toml                        # Project metadata, dependencies, tool config
 ├── uv.lock                               # Locked dependency versions
 └── README.md
@@ -194,14 +195,14 @@ docker compose up --build
 ```
 
 - API: `http://localhost:8000`
-- Ontology file: `http://localhost:8080/edamontology_adapted.org.owl` from the host, or `http://ontology/edamontology_adapted.org.owl` from the `api` container.
+- Ontology file: `http://localhost:8080/edam_eo.owl` from the host, or `http://ontology/edam_eo.owl` when requesting the `api` container.
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/format-info" \
   -H "Content-Type: application/json" \
   -d '{
     "format_identifier": "format_4119",
-    "ontology_schema_url": "http://ontology/edamontology_adapted.org.owl"
+    "ontology_schema_url": "http://ontology/edam_eo.owl"
   }'
 ```
 
