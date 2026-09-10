@@ -4,6 +4,7 @@ services:
       context: .
     ports:
       - "8000:8000"
+    platform: linux/amd64
     environment:
       SOS_FFS_MAPPINGS_DIR: mappings
     depends_on:
