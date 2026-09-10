@@ -38293,9 +38293,9 @@ experiments employing a combination of technologies.</oboInOwl:hasDefinition>
 
 
 
-    <!-- http://edamontology.org/format_webprotege_001 -->
+    <!-- http://edamontology.org/format_4124 -->
 
-    <owl:Class rdf:about="http://edamontology.org/format_webprotege_001">
+    <owl:Class rdf:about="http://edamontology.org/format_4124">
         <rdfs:subClassOf rdf:resource="http://edamontology.org/format_2350"/>
         <rdfs:subClassOf>
             <owl:Restriction>
@@ -38303,7 +38303,7 @@ experiments employing a combination of technologies.</oboInOwl:hasDefinition>
                 <owl:someValuesFrom rdf:resource="http://edamontology.org/data_webprotege_001"/>
             </owl:Restriction>
         </rdfs:subClassOf>
-        <oboInOwl:hasExactSynonym>GIS data format</oboInOwl:hasExactSynonym>
+        <oboInOwl:hasExactSynonym>GIS Data</oboInOwl:hasExactSynonym>
         <oboInOwl:hasExactSynonym>Geographical information format</oboInOwl:hasExactSynonym>
         <oboInOwl:hasNarrowSynonym>GIS file format</oboInOwl:hasNarrowSynonym>
         <rdfs:label>Geographical data format</rdfs:label>
@@ -38312,24 +38312,24 @@ experiments employing a combination of technologies.</oboInOwl:hasDefinition>
 
 
 
-    <!-- http://edamontology.org/format_webprotege_002 -->
+    <!-- http://edamontology.org/format_4125 -->
 
-    <owl:Class rdf:about="http://edamontology.org/format_webprotege_002">
-        <rdfs:subClassOf rdf:resource="http://edamontology.org/format_webprotege_001"/>
+    <owl:Class rdf:about="http://edamontology.org/format_4125">
+        <rdfs:subClassOf rdf:resource="http://edamontology.org/format_4124"/>
         <oboInOwl:hasNarrowSynonym>Grid format</oboInOwl:hasNarrowSynonym>
         <oboInOwl:inSubset rdf:resource="http://edamontology.org/geo"/>
-        <rdfs:label>Raster format (geographical data)</rdfs:label>
+        <rdfs:label>Raster (GIS)</rdfs:label>
         <rdfs:seeAlso rdf:resource="https://en.wikipedia.org/wiki/GIS_file_formats#Raster"/>
     </owl:Class>
 
 
 
-    <!-- http://edamontology.org/format_webprotege_003 -->
+    <!-- http://edamontology.org/format_4126 -->
 
-    <owl:Class rdf:about="http://edamontology.org/format_webprotege_003">
-        <rdfs:subClassOf rdf:resource="http://edamontology.org/format_webprotege_001"/>
+    <owl:Class rdf:about="http://edamontology.org/format_4126">
+        <rdfs:subClassOf rdf:resource="http://edamontology.org/format_4124"/>
         <oboInOwl:inSubset rdf:resource="http://edamontology.org/geo"/>
-        <rdfs:label>Vector format (geographical data)</rdfs:label>
+        <rdfs:label>Vector (GIS)</rdfs:label>
         <rdfs:seeAlso rdf:resource="https://en.wikipedia.org/wiki/GIS_file_formats#Vector"/>
     </owl:Class>
 
@@ -38558,7 +38558,7 @@ experiments employing a combination of technologies.</oboInOwl:hasDefinition>
         <rdfs:subClassOf>
             <owl:Restriction>
                 <owl:onProperty rdf:resource="http://www.w3.org/2004/02/skos/core#related"/>
-                <owl:someValuesFrom rdf:resource="http://edamontology.org/format_webprotege_003"/>
+                <owl:someValuesFrom rdf:resource="http://edamontology.org/format_4126"/>
             </owl:Restriction>
         </rdfs:subClassOf>
         <oboInOwl:created_by>melibleq</oboInOwl:created_by>
