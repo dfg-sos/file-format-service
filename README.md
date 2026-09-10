@@ -56,7 +56,16 @@ curl -X POST "http://localhost:8000/api/v1/compatibility" \
 ```
 
 ### Example: Format Info
+```bash
+curl -X POST "http://localhost:8000/api/v1/format-info" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format_identifier": "https://example.org/format_4119",
+    "ontology_schema_url": "https://example.org/ontology.owl"
+  }'
+```
 
+The user can omit the ontologies namespace since it is already available in the `owl` schema:
 ```bash
 curl -X POST "http://localhost:8000/api/v1/format-info" \
   -H "Content-Type: application/json" \
@@ -203,6 +212,15 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
   -H "Content-Type: application/json" \
   -d '{
     "format_identifier": "format_4119",
+    "ontology_schema_url": "http://ontology/edam_eo.owl"
+  }'
+```
+Alternatively, the user can prepend the official EDAM namespace to the format identifier since the local version is a fork of the EDAM ontology
+```bash
+curl -X POST "http://localhost:8000/api/v1/format-info" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "format_identifier": "http://edamontology.org/format_4119",
     "ontology_schema_url": "http://ontology/edam_eo.owl"
   }'
 ```
