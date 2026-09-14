@@ -22,7 +22,10 @@ deploy-check:
   stage: deploy-check
   tags: [secloud]
   image: docker:27
+  variables:
+    BUILDX_NO_DEFAULT_ATTESTATIONS: "1"
   script:
+    - docker compose down --rmi local --remove-orphans -v || true
     - docker compose up -d --build
     - >
       for i in $(seq 1 20); do
