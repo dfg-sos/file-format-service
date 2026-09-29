@@ -8,7 +8,11 @@ services:
     environment:
       SOS_FFS_MAPPINGS_DIR: mappings
     depends_on:
-      - ontology
+      ontology:
+        condition: service_started
+        # Restart the API when the ontology is recreated, so its in-memory
+        # ontology cache doesn't keep serving the old version.
+        restart: true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 30s
@@ -24,6 +28,7 @@ services:
   ontology:
     build:
       context: ontology
+    pull_policy: build
     ports:
       - "8080:80"
     restart: unless-stopped
