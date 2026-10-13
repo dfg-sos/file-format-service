@@ -39,6 +39,21 @@ curl -X POST "http://localhost:8000/api/v1/validate" \
   -F "mode=full"
 ```
 
+#### Multi-file formats (e.g. Shapefile)
+
+Upload the primary file as `file` and every remaining component as a repeated `secondary_files` part. Original file names must be preserved (components are matched by stem); names must be unique within a request.
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/validate" \
+  -F "file=@/path/to/roads.shp" \
+  -F "secondary_files=@/path/to/roads.shx" \
+  -F "secondary_files=@/path/to/roads.dbf" \
+  -F "secondary_files=@/path/to/roads.prj" \
+  -F "ontology_namespace=http://edamontology.org" \
+  -F "format_identifier=format_4119" \
+  -F "mode=structural"
+```
+
 > **Note:** The validation endpoint expects `ontology_namespace` (the ontology's base URI, used for format mapping lookup), while the compatibility endpoint expects `ontology_schema_url` (the URL to the actual OWL/RDF schema file).
 
 In `full` mode, additional optional fields let you validate a file's metadata against an expected value. For EO these include: `expected_crs` (any coordinate reference system string understood by `pyproj`, e.g. `EPSG:4326`) and `expected_geometry_type` (a GeoJSON-style geometry type such as `Point` or `MultiPolygon`, matched case-insensitively; only applies to vector formats). Omitting either field skips that check.

@@ -4,13 +4,14 @@ Consumes an API-layer DTO and produces a ``format_validator.ValidationRequest``
 by resolving the ontology format identifier via ``FormatTranslator``.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 from format_validator import (
     EOMetadata,
     FileInput,
+    MultiFileInput,
     FormatIdentifier,
     FormatTranslator,
     ValidationMode,
@@ -31,6 +32,7 @@ class ValidationRequestDTO:
     format_identifier: str
     mode: ValidationMode
     file_path: Path
+    secondary_file_paths: set[Path] = field(default_factory=set)
     expected_crs: Optional[str] = None
     expected_geometry_type: Optional[str] = None
 
@@ -72,7 +74,11 @@ class HTTPValidationRequestBuilder(ValidationRequestBuilder):
         except Exception:
             return None
 
-        file_input = FileInput(self.dto.file_path)
+        file_input: FileInput
+        if self.dto.secondary_file_paths:
+            file_input = MultiFileInput(self.dto.file_path, self.dto.secondary_file_paths)
+        else:
+            file_input = FileInput(self.dto.file_path)
 
         return ValidationRequest(
             actual_file=file_input,
