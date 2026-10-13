@@ -1,123 +1,9 @@
-"""Integration tests for the FastAPI application.
-
-These tests start the full app and exercise the HTTP endpoints.
-"""
+"""Integration tests for the ``/validate`` endpoint."""
 
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-
-from api.app import create_app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    app = create_app()
-    return TestClient(app)
-
-
-@pytest.fixture
-def ontology_file() -> Path:
-    return Path(__file__).parent.parent.parent / "ontology" / "edamontology_adapted.org.owl"
-
-
-@pytest.fixture
-def sample_geojson() -> Path:
-    return Path(__file__).parent.parent / "fixtures" / "sample.geojson"
-
-
-@pytest.fixture
-def sample_geojson_with_point() -> Path:
-    return Path(__file__).parent.parent / "fixtures" / "sample_point.geojson"
-
-
-class TestHealthEndpoint:
-    def test_health_returns_ok(self, client: TestClient) -> None:
-        response = client.get("/health")
-        assert response.status_code == 200
-        assert response.json() == {"status": "ok"}
-
-
-class TestCompatibilityEndpoint:
-    def test_compatibility_same_format(self, client: TestClient, ontology_file: Path) -> None:
-        """Identity check: a format is always compatible with itself."""
-        payload = {
-            "expected_format": "format_4119",
-            "actual_format": "format_4119",
-            "ontology_schema_url": ontology_file.as_uri(),
-        }
-        response = client.post("/api/v1/compatibility", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["compatible"] is True
-        assert "format_4119" in data["message"]
-
-    def test_compatibility_subclass(
-        self, client: TestClient, ontology_file: Path
-    ) -> None:
-        """Shapefile (format_4119) is a subclass of vector (format_4126)."""
-        payload = {
-            "expected_format": "format_4126",
-            "actual_format": "format_4119",
-            "ontology_schema_url": ontology_file.as_uri(),
-        }
-        response = client.post("/api/v1/compatibility", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["compatible"] is True
-        assert "format_4119" in data["message"]
-        assert "format_4126" in data["message"]
-
-    def test_compatibility_incompatible_formats(
-        self, client: TestClient, ontology_file: Path
-    ) -> None:
-        """GeoTIFF (format_4109) is not compatible with Shapefile (format_4119)."""
-        payload = {
-            "expected_format": "format_4119",
-            "actual_format": "format_4109",
-            "ontology_schema_url": ontology_file.as_uri(),
-        }
-        response = client.post("/api/v1/compatibility", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["compatible"] is False
-        assert "not" in data["message"].lower()
-
-    def test_compatibility_missing_schema_url(
-        self, client: TestClient
-    ) -> None:
-        """A request without ontology_schema_url yields 422."""
-        payload = {
-            "expected_format": "format_4119",
-            "actual_format": "format_4119",
-        }
-        response = client.post("/api/v1/compatibility", json=payload)
-        assert response.status_code == 422
-
-    def test_compatibility_invalid_schema_url(
-        self, client: TestClient
-    ) -> None:
-        """An unreachable schema URL yields a 4xx error."""
-        payload = {
-            "expected_format": "format_4119",
-            "actual_format": "format_4119",
-            "ontology_schema_url": "http://localhost:65432/nonexistent.owl",
-        }
-        response = client.post("/api/v1/compatibility", json=payload)
-        assert response.status_code == 502
-
-    def test_compatibility_invalid_local_schema(
-        self, client: TestClient, sample_geojson: Path
-    ) -> None:
-        """A local file:// schema URL that isn't valid RDF yields 400, not a crash."""
-        payload = {
-            "expected_format": "format_4119",
-            "actual_format": "format_4119",
-            "ontology_schema_url": sample_geojson.as_uri(),
-        }
-        response = client.post("/api/v1/compatibility", json=payload)
-        assert response.status_code == 400
 
 
 class TestValidationEndpoint:
@@ -546,66 +432,75 @@ class TestValidationEndpoint:
         assert data["errors"] != []
 
 
-class TestFormatInfoEndpoint:
-    def test_format_info_shapefile(self, client, ontology_file):
-        payload = {
-            "ontology_schema_url": str(ontology_file.as_uri()),
-            "format_identifier": "format_4119",
-        }
-        response = client.post("/api/v1/format-info", json=payload)
+class TestMultiFileValidation:
+    _FORM = {
+        "ontology_namespace": "http://edamontology.org",
+        "format_identifier": "format_4119",
+        "mode": "structural",
+    }
+
+    def _post(self, client: TestClient, shp: Path, extensions: list[str]):
+        with shp.open("rb") as primary:
+            files: list = [("file", (shp.name, primary, "application/octet-stream"))]
+            handles = []
+            for ext in extensions:
+                h = shp.with_suffix(ext).open("rb")
+                handles.append(h)
+                files.append(("secondary_files", (shp.with_suffix(ext).name, h, "application/octet-stream")))
+            try:
+                return client.post("/api/v1/validate", files=files, data=self._FORM)
+            finally:
+                for h in handles:
+                    h.close()
+
+    def test_shapefile_with_secondary_files(self, client: TestClient, sample_shapefile: Path) -> None:
+        response = self._post(client, sample_shapefile, [".shx", ".dbf", ".prj"])
+        assert response.status_code == 200
+        assert response.json()["status"] == "SUCCESS"
+
+    def test_shapefile_missing_secondary_files(self, client: TestClient, sample_shapefile: Path) -> None:
+        response = self._post(client, sample_shapefile, [".shx"])
         assert response.status_code == 200
         data = response.json()
-        assert data["format_uri"] == "http://edamontology.org/format_4119"
-        assert data["label"] == "Shapefile"
-        assert "composite format" in (data["comment"] or "").lower()
-        # Shapefile is a subclass of format_2333, format_4126, format_4127
-        assert any("format_2333" in p for p in data["parents"])
-        assert len(data["file_extensions"]) >= 2  # shp, shx, dbf
-        assert data["media_type"] is not None
+        assert data["status"] == "FAILURE"
+        assert any("Missing required secondary files" in e["message"] for e in data["errors"])
 
-    def test_format_info_with_children(self, client, ontology_file):
-        # format_4126 (Vector GIS data) should have format_4119 (Shapefile) as child
-        payload = {
-            "ontology_schema_url": str(ontology_file.as_uri()),
-            "format_identifier": "format_4126",
-        }
-        response = client.post("/api/v1/format-info", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert any("format_4119" in c for c in data["children"])
-
-    def test_format_info_missing_schema_url(self, client):
-        payload = {"format_identifier": "format_4119"}
-        response = client.post("/api/v1/format-info", json=payload)
-        assert response.status_code == 422
-
-    def test_format_info_invalid_schema_url(self, client):
-        payload = {
-            "ontology_schema_url": "http://localhost:59999/nonexistent.owl",
-            "format_identifier": "format_4119",
-        }
-        response = client.post("/api/v1/format-info", json=payload)
-        assert response.status_code == 502
-
-    def test_format_info_invalid_local_schema(self, client, sample_geojson: Path):
-        """A local file:// schema URL that isn't valid RDF yields 400, not a crash."""
-        payload = {
-            "ontology_schema_url": sample_geojson.as_uri(),
-            "format_identifier": "format_4119",
-        }
-        response = client.post("/api/v1/format-info", json=payload)
+    def test_duplicate_file_names_rejected(self, client: TestClient, sample_shapefile: Path) -> None:
+        with sample_shapefile.open("rb") as f:
+            response = client.post(
+                "/api/v1/validate",
+                files=[
+                    ("file", (sample_shapefile.name, f, "application/octet-stream")),
+                    ("secondary_files", (sample_shapefile.name, b"x", "application/octet-stream")),
+                ],
+                data=self._FORM,
+            )
         assert response.status_code == 400
 
-    def test_format_info_unknown_format(self, client, ontology_file):
-        # Unknown format should return empty metadata, not crash
-        payload = {
-            "ontology_schema_url": str(ontology_file.as_uri()),
-            "format_identifier": "format_99999",
-        }
-        response = client.post("/api/v1/format-info", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["format_uri"] == "http://edamontology.org/format_99999"
-        assert data["label"] is None
-        assert data["parents"] == []
-        assert data["children"] == []
+
+class TestSafeFilename:
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("roads.shp", "roads.shp"),
+            ("../../etc/passwd", "passwd"),
+            ("/abs/path/roads.shp", "roads.shp"),
+            ("..\\..\\evil.dll", "evil.dll"),
+            ("C:\\Users\\me\\roads.shp", "roads.shp"),
+            ("a/b\\c.dbf", "c.dbf"),
+            ("dir/", "dir"),
+            ("..", "fallback"),
+            (".", "fallback"),
+            ("", "fallback"),
+            (None, "fallback"),
+        ],
+    )
+    def test_safe_filename(self, raw: str | None, expected: str) -> None:
+        from io import BytesIO
+
+        from fastapi import UploadFile
+
+        from api.routers.validation import _safe_filename
+
+        upload = UploadFile(BytesIO(b""), filename=raw)
+        assert _safe_filename(upload, "fallback") == expected
