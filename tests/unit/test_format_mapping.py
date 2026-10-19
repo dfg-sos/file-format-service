@@ -1,18 +1,10 @@
 """Unit tests for the ``FormatTranslator`` integration."""
 
-from pathlib import Path
-
-import pytest
-
 from format_validator import FormatIdentifier, FormatTranslator
 
 
 class TestFormatTranslator:
     """Tests for format identifier resolution via the official translator."""
-
-    @pytest.fixture
-    def translator(self) -> FormatTranslator:
-        return FormatTranslator(Path("mappings"))
 
     def test_to_local_known_format(self, translator: FormatTranslator) -> None:
         result = translator.to_local("format_4119", "http://edamontology.org")
