@@ -95,7 +95,7 @@ class TestValidationEndpoint:
     def test_validate_uncertain_unsupported_format(
         self, client: TestClient, sample_geojson: Path
     ) -> None:
-        """A format that is mapped but has no registered validator (osm_json)
+        """A format that is mapped but has no registered validator (esrijson)
         yields an UNCERTAIN status rather than SUCCESS/FAILURE."""
         with sample_geojson.open("rb") as f:
             response = client.post(

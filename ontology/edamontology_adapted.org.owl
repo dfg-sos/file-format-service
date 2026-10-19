@@ -1196,6 +1196,7 @@
         <oboInOwl:created_by>mpataky</oboInOwl:created_by>
         <oboInOwl:creation_date>2026-02-15T21:17:34+01:00</oboInOwl:creation_date>
         <rdfs:seeAlso>EsriJSON</rdfs:seeAlso>
+        <rdfs:label>Esri JSON</rdfs:label>
         <rdfs:seeAlso>https://support.esri.com/en-us/gis-dictionary/esri-json</rdfs:seeAlso>
     </owl:Class>
 
