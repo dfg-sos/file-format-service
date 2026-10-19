@@ -95,7 +95,7 @@ class TestValidationEndpoint:
     def test_validate_uncertain_unsupported_format(
         self, client: TestClient, sample_geojson: Path
     ) -> None:
-        """A format that is mapped but has no registered validator (osm_json)
+        """A format that is mapped but has no registered validator (esrijson)
         yields an UNCERTAIN status rather than SUCCESS/FAILURE."""
         with sample_geojson.open("rb") as f:
             response = client.post(
@@ -250,6 +250,29 @@ class TestValidationEndpoint:
             "ValidationRequest could not be built" in w["message"] for w in data["warnings"]
         )
 
+    def test_validate_full_mode_invalid_geometry_type_uncertain(
+        self, client: TestClient, sample_geojson_with_point: Path
+    ) -> None:
+        """An unknown expected_geometry_type is reported as UNCERTAIN, like an
+        invalid CRS, instead of silently skipping the geometry check."""
+        with sample_geojson_with_point.open("rb") as f:
+            response = client.post(
+                "/api/v1/validate",
+                files={"file": ("sample_point.geojson", f, "application/geo+json")},
+                data={
+                    "ontology_namespace": "http://edamontology.org",
+                    "format_identifier": "format_4106",
+                    "mode": "full",
+                    "expected_geometry_type": "NotAGeometry",
+                },
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "UNCERTAIN"
+        assert any(
+            "ValidationRequest could not be built" in w["message"] for w in data["warnings"]
+        )
+
     def test_validate_full_mode_geometry_type_match_success(
         self, client: TestClient, sample_geojson_with_point: Path
     ) -> None:
@@ -313,32 +336,6 @@ class TestValidationEndpoint:
         assert data["status"] == "FAILURE"
         assert any(
             "do not include expected type" in e["message"] for e in data["errors"]
-        )
-
-    def test_validate_full_mode_unrecognized_geometry_type_treated_as_unset(
-        self, client: TestClient, sample_geojson_with_point: Path
-    ) -> None:
-        """An unrecognized geometry type name isn't rejected: EOMetadata
-        .from_strings silently maps it to None (same as not provided),
-        rather than raising like an invalid CRS string does. This pins down
-        that asymmetry rather than treating it as a bug to fix here."""
-        with sample_geojson_with_point.open("rb") as f:
-            response = client.post(
-                "/api/v1/validate",
-                files={"file": ("sample_point.geojson", f, "application/geo+json")},
-                data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
-                    "mode": "full",
-                    "expected_geometry_type": "NotAShape",
-                },
-            )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "SUCCESS"
-        info_messages = [info["message"] for info in data["infos"]]
-        assert any(
-            "skipping geometry type validation" in message for message in info_messages
         )
 
     def test_validate_mode_case_insensitive(

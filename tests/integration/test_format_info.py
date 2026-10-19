@@ -54,15 +54,13 @@ class TestFormatInfoEndpoint:
         assert response.status_code == 400
 
     def test_format_info_unknown_format(self, client, ontology_file):
-        # Unknown format should return empty metadata, not crash
+        """A format not defined in the ontology yields 404 with its expanded IRI."""
         payload = {
             "ontology_schema_url": str(ontology_file.as_uri()),
             "format_identifier": "format_99999",
         }
         response = client.post("/api/v1/format-info", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["format_uri"] == "http://edamontology.org/format_99999"
-        assert data["label"] is None
-        assert data["parents"] == []
-        assert data["children"] == []
+        assert response.status_code == 404
+        detail = response.json()["detail"]
+        assert ontology_file.as_uri() in detail["message"]
+        assert detail["unknown_formats"] == ["http://edamontology.org/format_99999"]

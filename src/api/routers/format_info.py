@@ -6,7 +6,7 @@ Queries an ontology for detailed information about a given format identifier.
 import httpx
 from fastapi import APIRouter, HTTPException, status
 
-from api.dependencies import get_ontology_registry
+from api.dependencies import check_formats_defined, get_ontology_registry
 from api.schemas.format_info import FormatInfoRequest, FormatInfoResponse
 from core.ontology import FormatOntology
 from rdflib import RDFS
@@ -33,6 +33,15 @@ async def get_format_info(
     The endpoint resolves the ontology schema, then queries the graph for
     labels, comments, parent/child relationships, equivalent classes, and
     optional ontology-specific metadata (file extensions, media type, etc.).
+
+    Status codes:
+
+    - ``200``: the format is defined; the body holds its metadata.
+    - ``400``: the ontology schema could not be parsed.
+    - ``404``: the format is not defined in the ontology. ``detail`` is
+      ``{"message": ..., "unknown_formats": [<expanded IRI>]}``.
+    - ``422``: the request body is invalid.
+    - ``502``: the ontology schema could not be fetched.
     """
     registry = get_ontology_registry()
     try:
@@ -47,6 +56,13 @@ async def get_format_info(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid ontology schema: {exc}",
         ) from exc
+
+    check_formats_defined(
+        ontology,
+        request.ontology_schema_url,
+        [request.format_identifier],
+        status_code=status.HTTP_404_NOT_FOUND,
+    )
 
     return _build_response(request.format_identifier, ontology)
 

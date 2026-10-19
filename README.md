@@ -56,7 +56,7 @@ curl -X POST "http://localhost:8000/api/v1/validate" \
 
 > **Note:** The validation endpoint expects `ontology_namespace` (the ontology's base URI, used for format mapping lookup), while the compatibility endpoint expects `ontology_schema_url` (the URL to the actual OWL/RDF schema file).
 
-In `full` mode, additional optional fields let you validate a file's metadata against an expected value. For EO these include: `expected_crs` (any coordinate reference system string understood by `pyproj`, e.g. `EPSG:4326`) and `expected_geometry_type` (a GeoJSON-style geometry type such as `Point` or `MultiPolygon`, matched case-insensitively; only applies to vector formats). Omitting either field skips that check.
+In `full` mode, additional optional fields let you validate a file's metadata against an expected value. For EO these include: `expected_crs` (any coordinate reference system string understood by `pyproj`, e.g. `EPSG:4326`) and `expected_geometry_type` (a GeoJSON-style geometry type such as `Point` or `MultiPolygon`, matched case-insensitively; only applies to vector formats). Omitting either field skips that check. A value that cannot be parsed (an unknown CRS or geometry type) yields an `UNCERTAIN` result.
 
 ### Example: Check Compatibility
 
@@ -109,6 +109,31 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
   "documentation": ["https://www.esri.com/..."]
 }
 ```
+
+### Unknown formats
+
+Both ontology endpoints first check that every requested format is declared as a class in the ontology (`rdf:type owl:Class`). An unknown format is reported as an error instead of a `compatible: false` or an empty metadata response:
+
+| Endpoint | Status | When |
+|----------|--------|------|
+| `/api/v1/compatibility` | `422` | `expected_format` and/or `actual_format` is not defined |
+| `/api/v1/format-info` | `404` | `format_identifier` is not defined |
+
+The error body lists exactly the unknown formats as expanded IRIs, so you can see which namespace was assumed:
+
+```json
+{
+  "detail": {
+    "message": "Format(s) not defined in ontology http://edamontology.org/EDAM.owl",
+    "unknown_formats": [
+      "http://edamontology.org/format_4119",
+      "http://edamontology.org/format_4126"
+    ]
+  }
+}
+```
+
+`/compatibility` returns `200` with `compatible: false` only when both formats are defined but unrelated. Both endpoints also return `400` for an ontology schema that cannot be parsed, `502` for one that cannot be fetched, and `422` for an invalid request body.
 
 The service fetches the ontology once, infers its namespace automatically, and caches the parsed graph for subsequent requests with the same `ontology_schema_url`.
 
