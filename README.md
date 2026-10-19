@@ -26,6 +26,7 @@ The service follows a layered architecture:
 |--------|------|-------------|
 | `GET` | `/health` | Health check probe |
 | `POST` | `/api/v1/validate` | Validate an uploaded file against a required format |
+| `POST` | `/api/v1/validate/local` | Validate a file on storage shared with the service, without uploading it |
 | `POST` | `/api/v1/compatibility` | Check compatibility between two format identifiers |
 | `POST` | `/api/v1/format-info` | Retrieve detailed metadata for a format from an ontology |
 
@@ -57,6 +58,49 @@ curl -X POST "http://localhost:8000/api/v1/validate" \
 > **Note:** The validation endpoint expects `ontology_namespace` (the ontology's base URI, used for format mapping lookup), while the compatibility endpoint expects `ontology_schema_url` (the URL to the actual OWL/RDF schema file).
 
 In `full` mode, additional optional fields let you validate a file's metadata against an expected value. For EO these include: `expected_crs` (any coordinate reference system string understood by `pyproj`, e.g. `EPSG:4326`) and `expected_geometry_type` (a GeoJSON-style geometry type such as `Point` or `MultiPolygon`, matched case-insensitively; only applies to vector formats). Omitting either field skips that check. A value that cannot be parsed (an unknown CRS or geometry type) yields an `UNCERTAIN` result.
+
+### Example: Validate a File on Shared Storage
+
+When client and service run on the same host (or share a mounted volume), the client can send the file's path instead of uploading it. The service reads the file in place: nothing is transferred, copied or deleted. The result is the same as for `/validate`. This is the intended mode for the format-aware CWL runner.
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/validate/local" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "/home/user/data/run42/roads.shp",
+    "secondary_file_paths": [
+      "/home/user/data/run42/roads.shx",
+      "/home/user/data/run42/roads.dbf",
+      "/home/user/data/run42/roads.prj"
+    ],
+    "ontology_namespace": "http://edamontology.org",
+    "format_identifier": "format_4119",
+    "mode": "full",
+    "expected_crs": "EPSG:4326"
+  }'
+```
+
+The body takes the same fields as `/validate`, with `file_path` and `secondary_file_paths` (absolute paths, as the client sees them) instead of the uploads. The endpoint is disabled unless `SOS_FFS_SHARED_DIRS` is set (see [Configuration](#configuration)), and only files inside those directories are accepted, also after following symlinks.
+
+| Status | When |
+|--------|------|
+| `200` | Validation ran; `status` holds the outcome |
+| `400` | A path is not absolute, the mode is invalid, or the format is not supported |
+| `403` | Local validation is disabled, or a path is outside the shared directories (including via `..` or symlinks) |
+| `404` | A path inside a shared directory does not exist |
+
+Clients should fall back to uploading via `/validate` on a `403`, e.g. for files outside the shared directories.
+
+### Server-Timing header
+
+Both validation endpoints report how long the service's own steps took in a standard [`Server-Timing`](https://www.w3.org/TR/server-timing/) response header (milliseconds):
+
+```
+Server-Timing: receive;dur=1.8, validate;dur=812.3     # /validate
+Server-Timing: resolve;dur=0.1, validate;dur=812.3     # /validate/local
+```
+
+`receive` covers writing the uploads to a temporary directory, `resolve` the path checks, and `validate` the validation itself. The multipart body is received and parsed before the endpoint runs, so `receive` does not include the network transfer: derive it as the client's round-trip time minus the reported durations.
 
 ### Example: Check Compatibility
 
@@ -226,6 +270,17 @@ All configuration is handled via environment variables prefixed with `SOS_FFS_`:
 | `SOS_FFS_MAPPINGS_DIR` | `mappings` | Directory containing (Ontology -> File Format) mapping files |
 | `SOS_FFS_HOST` | `0.0.0.0` | Bind host |
 | `SOS_FFS_PORT` | `8000` | Bind port |
+| `SOS_FFS_SHARED_DIRS` | *(empty)* | Directories shared with clients, enabling `/validate/local`. Comma-separated entries of `host_path` or `host_path:container_path` (see below). Empty disables the endpoint. |
+
+`SOS_FFS_SHARED_DIRS` lists the directories in which clients may reference files, as absolute paths. Each entry is `host_path` when the service sees the directory under the same path as the client, or `host_path:container_path` when it is mounted elsewhere, e.g. inside a container. Clients always send host paths; the service maps them to the container path. Paths containing `:` or `,` are not supported.
+
+```bash
+# Service runs directly on the host
+SOS_FFS_SHARED_DIRS=/home/user/data,/scratch
+
+# Service runs in a container with /home/user/data mounted at /data
+SOS_FFS_SHARED_DIRS=/home/user/data:/data
+```
 
 ### Containerisation (Docker)
 
@@ -264,6 +319,19 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
     "ontology_schema_url": "http://ontology/edam_eo.owl"
   }'
 ```
+
+To validate files on the host without uploading them (`/api/v1/validate/local`), mount the host directory read-only into the `api` container and map it via `SOS_FFS_SHARED_DIRS`. `docker-compose.yml` contains a commented example:
+
+```yaml
+services:
+  api:
+    environment:
+      SOS_FFS_SHARED_DIRS: /home/user/data:/data
+    volumes:
+      - /home/user/data:/data:ro
+```
+
+Clients keep sending host paths (`/home/user/data/...`); the service reads them under `/data`.
 
 ### Runtime Requirements
 

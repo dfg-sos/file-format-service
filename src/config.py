@@ -1,8 +1,34 @@
 """Application configuration via pydantic-settings."""
 
-from pathlib import Path
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Annotated, Any
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+
+@dataclass(frozen=True)
+class SharedDir:
+    """A directory shared between clients and the service.
+
+    Attributes:
+        host: The directory as clients see it (absolute).
+        container: Where the service sees the same directory, e.g. the mount
+            point inside a container. Equal to ``host`` without a mapping.
+    """
+
+    host: PurePosixPath
+    container: Path
+
+    @classmethod
+    def parse(cls, entry: str) -> SharedDir:
+        """Parse ``host_path`` or ``host_path:container_path``."""
+        host, _, container = entry.partition(":")
+        host, container = host.strip(), container.strip() or host.strip()
+        if not (PurePosixPath(host).is_absolute() and PurePosixPath(container).is_absolute()):
+            raise ValueError(f"Shared dir paths must be absolute: '{entry}'")
+        return cls(host=PurePosixPath(host), container=Path(container))
 
 
 class Settings(BaseSettings):
@@ -19,3 +45,14 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     host: str = "0.0.0.0"
     port: int = 8000
+    # Comma-separated ``host_path[:container_path]`` entries. Files below these
+    # directories can be validated in place via ``/validate/local``; empty
+    # disables that endpoint. Paths containing ``:`` or ``,`` are not supported.
+    shared_dirs: Annotated[list[SharedDir], NoDecode] = []
+
+    @field_validator("shared_dirs", mode="before")
+    @classmethod
+    def _parse_shared_dirs(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return [SharedDir.parse(entry) for entry in value.split(",") if entry.strip()]
+        return value

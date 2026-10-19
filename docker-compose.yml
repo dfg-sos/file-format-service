@@ -7,6 +7,12 @@ services:
     platform: linux/amd64
     environment:
       SOS_FFS_MAPPINGS_DIR: mappings
+      # Validate files on the host in place via /api/v1/validate/local:
+      # mount the host directory read-only and map host path -> mount point.
+      # Clients then send host paths like /home/user/data/run42/out.shp.
+      # SOS_FFS_SHARED_DIRS: /home/user/data:/data
+    # volumes:
+    #   - /home/user/data:/data:ro
     depends_on:
       ontology:
         condition: service_started

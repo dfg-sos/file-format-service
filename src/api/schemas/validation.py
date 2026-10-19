@@ -37,8 +37,28 @@ class FileFormatValidationRequest(BaseModel):
             "Expected GeoJSON-style geometry type for FULL-mode metadata "
             "validation (e.g. 'Point', 'MultiPolygon'), matched "
             "case-insensitively. Only applies to vector formats and only "
-            "checked in FULL mode. Unrecognized names are treated as not "
-            "provided rather than rejected."
+            "checked in FULL mode. Unrecognized names make the result "
+            "UNCERTAIN."
+        ),
+    )
+
+
+class LocalValidationRequest(FileFormatValidationRequest):
+    """JSON body for validating a file on storage shared with the service.
+
+    Paths are given as the client sees them and must lie inside one of the
+    directories configured in ``SOS_FFS_SHARED_DIRS``.
+    """
+
+    file_path: str = Field(
+        ...,
+        description="Absolute path of the file to validate. For multi-file formats, the primary file (e.g. the .shp).",
+    )
+    secondary_file_paths: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Absolute paths of the remaining files of a multi-file format (e.g. .shx, .dbf, .prj). "
+            "They must be in the same directory as file_path."
         ),
     )
 
