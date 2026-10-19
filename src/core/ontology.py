@@ -103,13 +103,30 @@ class FormatOntology:
 
         If ``fmt`` already starts with ``http://`` or ``https://`` it is
         returned unchanged. Otherwise it is prefixed with the ontology
-        namespace (if one was inferred).
+        namespace (if one was inferred). A namespace that already ends in
+        ``/`` or ``#`` is used as is; otherwise ``/`` is inserted.
         """
         if fmt.startswith("http://") or fmt.startswith("https://"):
             return fmt
         if self._namespace:
-            return self._namespace.rstrip("/") + "/" + fmt
+            if self._namespace.endswith(("/", "#")):
+                return self._namespace + fmt
+            return self._namespace + "/" + fmt
         return fmt
+
+    def is_defined(self, fmt: str) -> bool:
+        """Check whether ``fmt`` is declared as a class in the ontology.
+
+        A format counts as defined when its expanded IRI is the subject of an
+        ``rdf:type owl:Class`` (or ``rdfs:Class``) triple. Being merely
+        referenced as the object of some triple is not enough.
+        """
+        fmt_uri = URIRef(self._expand_id(fmt))
+        return (fmt_uri, RDF.type, OWL.Class) in self.graph or (
+            fmt_uri,
+            RDF.type,
+            RDFS.Class,
+        ) in self.graph
 
     # ------------------------------------------------------------------
     # Core logic (mirrors cwl-utils formatSubclassOf)

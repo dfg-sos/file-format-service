@@ -7,7 +7,7 @@ routers can receive them via ``Depends`` without manual construction.
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import Depends, Form
+from fastapi import Depends, Form, HTTPException
 
 from api.schemas.validation import FileFormatValidationRequest
 from core import FormatOntology
@@ -44,6 +44,28 @@ async def resolve_ontology(
     Uses the registry's in-memory cache to avoid repeated fetches.
     """
     return await registry.resolve(ontology_schema_url)
+
+
+def check_formats_defined(
+    ontology: FormatOntology,
+    ontology_schema_url: str,
+    formats: list[str],
+    status_code: int,
+) -> None:
+    """Verify that every format is defined as a class in the ontology.
+
+    Raises ``HTTPException`` with ``status_code`` listing the undefined formats
+    as expanded IRIs, so the client can see which namespace was assumed.
+    """
+    unknown = sorted({ontology._expand_id(fmt) for fmt in formats if not ontology.is_defined(fmt)})
+    if unknown:
+        raise HTTPException(
+            status_code=status_code,
+            detail={
+                "message": f"Format(s) not defined in ontology {ontology_schema_url}",
+                "unknown_formats": unknown,
+            },
+        )
 
 
 def get_validation_request(

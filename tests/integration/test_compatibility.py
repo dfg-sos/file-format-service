@@ -84,3 +84,49 @@ class TestCompatibilityEndpoint:
         }
         response = client.post("/api/v1/compatibility", json=payload)
         assert response.status_code == 400
+
+    def test_compatibility_unknown_actual_format(
+        self, client: TestClient, ontology_file: Path
+    ) -> None:
+        """An undefined actual format yields 422 listing only that format."""
+        payload = {
+            "expected_format": "format_4126",
+            "actual_format": "format_99999",
+            "ontology_schema_url": ontology_file.as_uri(),
+        }
+        response = client.post("/api/v1/compatibility", json=payload)
+        assert response.status_code == 422
+        detail = response.json()["detail"]
+        assert ontology_file.as_uri() in detail["message"]
+        assert detail["unknown_formats"] == ["http://edamontology.org/format_99999"]
+
+    def test_compatibility_unknown_expected_format(
+        self, client: TestClient, ontology_file: Path
+    ) -> None:
+        """An undefined expected format yields 422 listing only that format."""
+        payload = {
+            "expected_format": "format_99998",
+            "actual_format": "format_4119",
+            "ontology_schema_url": ontology_file.as_uri(),
+        }
+        response = client.post("/api/v1/compatibility", json=payload)
+        assert response.status_code == 422
+        assert response.json()["detail"]["unknown_formats"] == [
+            "http://edamontology.org/format_99998"
+        ]
+
+    def test_compatibility_both_formats_unknown(
+        self, client: TestClient, ontology_file: Path
+    ) -> None:
+        """When both formats are undefined, both are listed."""
+        payload = {
+            "expected_format": "format_99998",
+            "actual_format": "format_99999",
+            "ontology_schema_url": ontology_file.as_uri(),
+        }
+        response = client.post("/api/v1/compatibility", json=payload)
+        assert response.status_code == 422
+        assert response.json()["detail"]["unknown_formats"] == [
+            "http://edamontology.org/format_99998",
+            "http://edamontology.org/format_99999",
+        ]
