@@ -7,28 +7,28 @@ EXAMPLE_ORG = "http://example.org/"
 
 
 class TestCheck:
-    def test_same_format_is_compatible(self, edam_ontology: FormatOntology) -> None:
+    def test_same_format_is_compatible(self, eo_ontology: FormatOntology) -> None:
         result = CompatibilityService.check(
-            expected="format_4119",
-            actual="format_4119",
-            ontology=edam_ontology,
+            expected="Shapefile",
+            actual="Shapefile",
+            ontology=eo_ontology,
         )
         assert isinstance(result, CompatibilityResult)
         assert result.compatible is True
 
-    def test_subclass_format_is_compatible(self, edam_ontology: FormatOntology) -> None:
+    def test_subclass_format_is_compatible(self, eo_ontology: FormatOntology) -> None:
         result = CompatibilityService.check(
-            expected="format_4125",  # raster
-            actual="format_4109",  # geotiff
-            ontology=edam_ontology,
+            expected="Raster",
+            actual="GeoTIFF",
+            ontology=eo_ontology,
         )
         assert result.compatible is True
 
-    def test_incompatible_formats(self, edam_ontology: FormatOntology) -> None:
+    def test_incompatible_formats(self, eo_ontology: FormatOntology) -> None:
         result = CompatibilityService.check(
-            expected="format_4109",  # geotiff
-            actual="format_4119",  # shapefile
-            ontology=edam_ontology,
+            expected="GeoTIFF",
+            actual="Shapefile",
+            ontology=eo_ontology,
         )
         assert result.compatible is False
 

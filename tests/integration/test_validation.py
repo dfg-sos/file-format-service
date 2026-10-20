@@ -16,8 +16,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                 },
             )
@@ -37,8 +37,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4107",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoPackage",
                     "mode": "basic",
                 },
             )
@@ -53,8 +53,8 @@ class TestValidationEndpoint:
         response = client.post(
             "/api/v1/validate",
             data={
-                "ontology_namespace": "http://edamontology.org",
-                "format_identifier": "format_4106",
+                "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                "format_identifier": "GeoJSON",
                 "mode": "basic",
             },
         )
@@ -69,8 +69,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "invalid_mode",
                 },
             )
@@ -85,7 +85,7 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
                     "format_identifier": "format_9999",
                     "mode": "basic",
                 },
@@ -102,8 +102,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4105",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "EsriJSON",
                     "mode": "basic",
                 },
             )
@@ -122,8 +122,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "structural",
                 },
             )
@@ -142,8 +142,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                 },
             )
@@ -168,8 +168,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_crs": "",
                     "expected_geometry_type": "",
@@ -195,8 +195,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_crs": "EPSG:4326",
                 },
@@ -215,8 +215,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_crs": "EPSG:3857",
                 },
@@ -237,8 +237,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_crs": "totally-bogus-crs-string",
                 },
@@ -260,8 +260,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample_point.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_geometry_type": "NotAGeometry",
                 },
@@ -282,8 +282,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample_point.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_geometry_type": "Point",
                 },
@@ -302,8 +302,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample_point.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_geometry_type": "point",
                 },
@@ -325,8 +325,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample_point.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "full",
                     "expected_geometry_type": "Polygon",
                 },
@@ -347,8 +347,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "BASIC",
                 },
             )
@@ -368,7 +368,7 @@ class TestValidationEndpoint:
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
                     "ontology_namespace": "http://unknown-ontology.org",
-                    "format_identifier": "format_4106",
+                    "format_identifier": "GeoJSON",
                     "mode": "basic",
                 },
             )
@@ -384,7 +384,7 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "format_identifier": "format_4106",
+                    "format_identifier": "GeoJSON",
                     "mode": "basic",
                 },
             )
@@ -399,7 +399,7 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("sample.geojson", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
                     "mode": "basic",
                 },
             )
@@ -418,8 +418,8 @@ class TestValidationEndpoint:
                 "/api/v1/validate",
                 files={"file": ("noext", f, "application/geo+json")},
                 data={
-                    "ontology_namespace": "http://edamontology.org",
-                    "format_identifier": "format_4106",
+                    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+                    "format_identifier": "GeoJSON",
                     "mode": "basic",
                 },
             )
@@ -431,8 +431,8 @@ class TestValidationEndpoint:
 
 class TestMultiFileValidation:
     _FORM = {
-        "ontology_namespace": "http://edamontology.org",
-        "format_identifier": "format_4119",
+        "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+        "format_identifier": "Shapefile",
         "mode": "structural",
     }
 

@@ -13,28 +13,14 @@ services:
     #   SOS_FFS_SHARED_DIRS: ${PWD}/tmp/:/data
     # volumes:
     #   - ${PWD}/tmp/:/data:ro
-    depends_on:
-      ontology:
-        condition: service_started
-        # Restart the API when the ontology is recreated, so its in-memory
-        # ontology cache doesn't keep serving the old version.
-        restart: true
+      # Use local ontologies in /api/v1/compatibility and /api/v1/format-info:
+      # mount them read-only and reference them by their path in the container,
+      # e.g. "ontology_schema_url": "file:///ontology/eo-formats.owl".
+    #   - ${PWD}/ontology/:/ontology:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
-    restart: unless-stopped
-
-  # Serves the adapted EDAM ontology over HTTP so it can be referenced as
-  # `ontology_schema_url=http://ontology/edam_eo.owl` from the API container
-  # (or http://localhost:8080/edam_eo.owl from the host)
-  # in /api/v1/compatibility and /api/v1/format-info requests.
-  ontology:
-    build:
-      context: ontology
-    pull_policy: build
-    ports:
-      - "8080:80"
     restart: unless-stopped
