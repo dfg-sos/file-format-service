@@ -27,6 +27,7 @@ class OntologyRegistry:
             applied.
 
         Raises:
+            FileNotFoundError: When a ``file://`` URL points to no file.
             httpx.HTTPError: When the schema URL cannot be fetched.
             ValueError: When the fetched content cannot be parsed as RDF.
         """
@@ -37,6 +38,8 @@ class OntologyRegistry:
         if parsed.scheme == "file":
             # Let rdflib infer the serialisation format from the file extension.
             path = Path(parsed.path)
+            if not path.is_file():
+                raise FileNotFoundError(f"Ontology schema not found: {schema_url}")
             try:
                 ontology = FormatOntology.from_source(path)
             except Exception as exc:

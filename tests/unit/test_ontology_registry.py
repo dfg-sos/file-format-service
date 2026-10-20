@@ -63,6 +63,10 @@ class TestFileScheme:
         with pytest.raises(ValueError):
             await registry.resolve(path.as_uri())
 
+    async def test_missing_file_raises_file_not_found(self, registry: OntologyRegistry, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            await registry.resolve((tmp_path / "missing.owl").as_uri())
+
 
 class TestHttpScheme:
     async def test_turtle_from_content_type(self, registry: OntologyRegistry, mock_http) -> None:
