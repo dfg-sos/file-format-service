@@ -12,3 +12,5 @@ __pycache__
 .clinerules
 # IDE
 .vscode
+# Testing
+tmp
