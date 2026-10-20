@@ -2,7 +2,7 @@
 
 A FastAPI REST API service for validating Earth Observation (EO) file formats and checking ontology-based format compatibility.
 
-The service bridges ontology-specific format identifiers (e.g. from the EDAM ontology) with an external `format_validator` module, enabling automated validation of uploaded geospatial files. Furthermore static compatibility checks can be executed upon existing OWL/RDF ontologies.
+The service bridges ontology-specific format identifiers (e.g. from the [EO formats ontology](#eo-formats-ontology)) with an external `format_validator` module, enabling automated validation of uploaded geospatial files. Furthermore static compatibility checks can be executed upon existing OWL/RDF ontologies.
 
 ## Features
 
@@ -35,8 +35,8 @@ The service follows a layered architecture:
 ```bash
 curl -X POST "http://localhost:8000/api/v1/validate" \
   -F "file=@/path/to/your/file.geojson" \
-  -F "ontology_namespace=http://edamontology.org" \
-  -F "format_identifier=format_4106" \
+  -F "ontology_namespace=https://w3id.org/sos/eo-formats#" \
+  -F "format_identifier=GeoJSON" \
   -F "mode=full"
 ```
 
@@ -50,8 +50,8 @@ curl -X POST "http://localhost:8000/api/v1/validate" \
   -F "secondary_files=@/path/to/roads.shx" \
   -F "secondary_files=@/path/to/roads.dbf" \
   -F "secondary_files=@/path/to/roads.prj" \
-  -F "ontology_namespace=http://edamontology.org" \
-  -F "format_identifier=format_4119" \
+  -F "ontology_namespace=https://w3id.org/sos/eo-formats#" \
+  -F "format_identifier=Shapefile" \
   -F "mode=structural"
 ```
 
@@ -73,8 +73,8 @@ curl -X POST "http://localhost:8000/api/v1/validate/local" \
       "/home/user/data/run42/roads.dbf",
       "/home/user/data/run42/roads.prj"
     ],
-    "ontology_namespace": "http://edamontology.org",
-    "format_identifier": "format_4119",
+    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+    "format_identifier": "Shapefile",
     "mode": "full",
     "expected_crs": "EPSG:4326"
   }'
@@ -108,8 +108,8 @@ Server-Timing: resolve;dur=0.1, validate;dur=812.3     # /validate/local
 curl -X POST "http://localhost:8000/api/v1/compatibility" \
   -H "Content-Type: application/json" \
   -d '{
-    "expected_format": "format_4126",
-    "actual_format": "format_4119",
+    "expected_format": "Vector",
+    "actual_format": "Shapefile",
     "ontology_schema_url": "https://example.org/ontology.owl"
   }'
 ```
@@ -119,7 +119,7 @@ curl -X POST "http://localhost:8000/api/v1/compatibility" \
 curl -X POST "http://localhost:8000/api/v1/format-info" \
   -H "Content-Type: application/json" \
   -d '{
-    "format_identifier": "https://example.org/format_4119",
+    "format_identifier": "https://w3id.org/sos/eo-formats#Shapefile",
     "ontology_schema_url": "https://example.org/ontology.owl"
   }'
 ```
@@ -129,7 +129,7 @@ The user can omit the ontologies namespace since it is already available in the 
 curl -X POST "http://localhost:8000/api/v1/format-info" \
   -H "Content-Type: application/json" \
   -d '{
-    "format_identifier": "format_4119",
+    "format_identifier": "Shapefile",
     "ontology_schema_url": "https://example.org/ontology.owl"
   }'
 ```
@@ -138,21 +138,23 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
 
 ```json
 {
-  "format_uri": "http://edamontology.org/format_4119",
+  "format_uri": "https://w3id.org/sos/eo-formats#Shapefile",
   "label": "Shapefile",
   "comment": "Shapefile is a composite format including 3 mandatory files...",
-  "parents": [
-    "http://edamontology.org/format_2333",
-    "http://edamontology.org/format_4126"
-  ],
+  "parents": ["https://w3id.org/sos/eo-formats#Vector"],
   "children": [],
   "equivalents": [],
-  "file_extensions": ["dbf", "shp", "shx"],
-  "media_type": "x-gis/x-shapefile (not in IANA)",
-  "see_also": ["https://en.wikipedia.org/wiki/Shapefile"],
-  "documentation": ["https://www.esri.com/..."]
+  "see_also": ["https://en.wikipedia.org/wiki/Shapefile", "..."],
+  "annotations": {
+    "http://www.w3.org/2000/01/rdf-schema#label": ["Shapefile"],
+    "https://w3id.org/sos/eo-formats#fileExtension": ["dbf", "shp", "shx"],
+    "https://w3id.org/sos/eo-formats#mediaType": ["x-gis/x-shapefile (not in IANA)"],
+    "...": []
+  }
 }
 ```
+
+`label`, `comment`, `see_also`, `parents`, `children` and `equivalents` come from standard RDFS/OWL predicates and work with any ontology. `annotations` lists every annotation of the class under its predicate IRI, whatever the ontology calls it (e.g. file extensions or media types).
 
 ### Unknown formats
 
@@ -168,18 +170,22 @@ The error body lists exactly the unknown formats as expanded IRIs, so you can se
 ```json
 {
   "detail": {
-    "message": "Format(s) not defined in ontology http://edamontology.org/EDAM.owl",
+    "message": "Format(s) not defined in ontology https://example.org/ontology.owl",
     "unknown_formats": [
-      "http://edamontology.org/format_4119",
-      "http://edamontology.org/format_4126"
+      "https://example.org/format_99998",
+      "https://example.org/format_99999"
     ]
   }
 }
 ```
 
-`/compatibility` returns `200` with `compatible: false` only when both formats are defined but unrelated. Both endpoints also return `400` for an ontology schema that cannot be parsed, `502` for one that cannot be fetched, and `422` for an invalid request body.
+`/compatibility` returns `200` with `compatible: false` only when both formats are defined but unrelated. Both endpoints also return `400` for an ontology schema that cannot be parsed, `404` for a local (`file://`) schema that does not exist, `502` for one that cannot be fetched, and `422` for an invalid request body.
 
 The service fetches the ontology once, infers its namespace automatically, and caches the parsed graph for subsequent requests with the same `ontology_schema_url`.
+
+## EO formats ontology
+
+`ontology/eo-formats.owl` defines the Earth Observation file formats as a standalone OWL ontology in the namespace `https://w3id.org/sos/eo-formats#`, with readable class names (`GeoTIFF`, `COG`, `Shapefile`, `Raster`, `Vector`, …). It does not depend on any other ontology. Use the short name (`Shapefile`) or the full IRI (`https://w3id.org/sos/eo-formats#Shapefile`) as format identifier, and `https://w3id.org/sos/eo-formats#` as `ontology_namespace` for validation.
 
 ## Development
 
@@ -235,7 +241,7 @@ pytest --cov=sos_file_format_service --cov-report=term-missing
 ```
 sos-file-format-service/
 ├── mappings/
-│   └── http---edamontology-org.json      # EDAM → validator format mappings
+│   └── eo-formats.json                   # EO formats ontology → validator format mappings
 ├── src/
 │   ├── main.py                           # Uvicorn entry point
 │   ├── config.py                         # Pydantic-settings configuration
@@ -251,7 +257,8 @@ sos-file-format-service/
 │   ├── unit/
 │   ├── integration/
 │   └── fixtures/
-├── ontology/                              # Ontology fixture + Dockerfile served by docker-compose
+├── ontology/
+│   └── eo-formats.owl                    # EO formats ontology
 ├── docker-compose.yml
 ├── Dockerfile
 ├── pyproject.toml                        # Project metadata, dependencies, tool config
@@ -293,32 +300,13 @@ docker run -p 8000:8000 sos-file-format-service
 
 #### docker compose
 
-`docker-compose.yml` runs the API alongside an `nginx` container that serves the adapted EDAM ontology (`ontology/edamontology_adapted.org.owl`) over HTTP, so it can be used as an `ontology_schema_url` without leaving the Docker network:
+`docker-compose.yml` runs the API:
 
 ```shell
 docker compose up --build
 ```
 
-- API: `http://localhost:8000`
-- Ontology file: `http://localhost:8080/edam_eo.owl` from the host, or `http://ontology/edam_eo.owl` when requesting the `api` container.
-
-```bash
-curl -X POST "http://localhost:8000/api/v1/format-info" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "format_identifier": "format_4119",
-    "ontology_schema_url": "http://ontology/edam_eo.owl"
-  }'
-```
-Alternatively, the user can prepend the official EDAM namespace to the format identifier since the local version is a fork of the EDAM ontology
-```bash
-curl -X POST "http://localhost:8000/api/v1/format-info" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "format_identifier": "http://edamontology.org/format_4119",
-    "ontology_schema_url": "http://ontology/edam_eo.owl"
-  }'
-```
+The API is available at `http://localhost:8000`. Ontologies are fetched from their `ontology_schema_url` (see [Runtime Requirements](#runtime-requirements)).
 
 To validate files on the host without uploading them (`/api/v1/validate/local`), mount the host directory read-only into the `api` container and map it via `SOS_FFS_SHARED_DIRS`. `docker-compose.yml` contains a commented example:
 
