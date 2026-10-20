@@ -25,15 +25,10 @@ class FormatInfoResponse(BaseModel):
     parents: list[str] = Field(default_factory=list, description="Direct parent classes.")
     children: list[str] = Field(default_factory=list, description="Direct child classes.")
     equivalents: list[str] = Field(default_factory=list, description="Equivalent classes.")
-    file_extensions: list[str] = Field(
-        default_factory=list, description="Known file extensions (EDAM-specific, if present)."
-    )
-    media_type: str | None = Field(
-        None, description="IANA media type (EDAM-specific, if present)."
-    )
     see_also: list[str] = Field(
         default_factory=list, description="Related links (rdfs:seeAlso, if present)."
     )
-    documentation: list[str] = Field(
-        default_factory=list, description="Documentation URLs (EDAM-specific, if present)."
+    annotations: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="All annotations of the class, keyed by predicate IRI (ontology-agnostic).",
     )
