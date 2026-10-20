@@ -8,12 +8,13 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import Depends, Form, HTTPException
+from format_validator import FormatTranslator
 
 from api.schemas.validation import FileFormatValidationRequest
-from core import FormatOntology
 from config import Settings
-from format_validator import FormatTranslator
+from core import FormatOntology
 from service.ontology_registry import OntologyRegistry
+from service.shared_paths import SharedPathResolver
 
 
 @lru_cache
@@ -27,6 +28,12 @@ def get_format_translator() -> FormatTranslator:
     """Return cached ``FormatTranslator`` loaded from the configured directory."""
     settings = get_settings()
     return FormatTranslator(settings.mappings_dir)
+
+
+@lru_cache
+def get_shared_path_resolver() -> SharedPathResolver:
+    """Return cached ``SharedPathResolver`` for the configured shared directories."""
+    return SharedPathResolver(get_settings().shared_dirs)
 
 
 @lru_cache
