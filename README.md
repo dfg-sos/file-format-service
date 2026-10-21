@@ -241,7 +241,8 @@ pytest --cov=sos_file_format_service --cov-report=term-missing
 ```
 sos-file-format-service/
 ├── mappings/
-│   └── eo-formats.json                   # EO formats ontology → validator format mappings
+│   ├── eo-formats.json                   # Bundled mappings: EO formats ontology → validator formats
+│   └── custom/                           # Custom mappings (git-ignored, mount point in the image)
 ├── src/
 │   ├── main.py                           # Uvicorn entry point
 │   ├── config.py                         # Pydantic-settings configuration
@@ -274,7 +275,6 @@ All configuration is handled via environment variables prefixed with `SOS_FFS_`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SOS_FFS_MAPPINGS_DIR` | `mappings` | Directory containing (Ontology -> File Format) mapping files |
 | `SOS_FFS_HOST` | `0.0.0.0` | Bind host |
 | `SOS_FFS_PORT` | `8000` | Bind port |
 | `SOS_FFS_SHARED_DIRS` | *(empty)* | Directories shared with clients, enabling `/validate/local`. Comma-separated entries of `host_path` or `host_path:container_path` (see below). Empty disables the endpoint. |
@@ -289,39 +289,37 @@ SOS_FFS_SHARED_DIRS=/home/user/data,/scratch
 SOS_FFS_SHARED_DIRS=/home/user/data:/data
 ```
 
-### Containerisation (Docker)
+### Format mappings
 
-The `Dockerfile` builds on [`logru/format-validator-deps`](https://hub.docker.com/r/logru/format-validator-deps), which bundles the GDAL/GEOS/PROJ toolchain `format-validator`'s dependencies need to compile (namely `fiona`, which has no prebuilt wheel for Python 3.14 yet), plus `uv` and the app itself:
+Bundled mapping files live in `mappings/` (`/app/mappings` in the image). Additional ones go into `mappings/custom/` (`/app/mappings/custom`, git-ignored). They are loaded after the bundled ones, so they add new ontologies, and a file for an already bundled `ontology_uri` overrides it:
+
+```json
+{
+  "ontology_uri": "https://example.org/my-formats#",
+  "mappings": { "Roads": "shapefile", "Elevation": "geotiff" }
+}
+```
+
+### Container image
+
+The image is published to `ghcr.io/dfg-sos/file-format-service` (`linux/amd64`) as `latest` and, for Git tags `v1.2.3`, as `1.2.3` and `1.2`. Custom mappings, shared data and local ontologies are mounted at run time:
 
 ```shell
-docker build -t sos-file-format-service .
-docker run -p 8000:8000 sos-file-format-service
+docker run -p 8000:8000 \
+  -v /home/user/my-mappings:/app/mappings/custom:ro \
+  -v /home/user/data:/data:ro \
+  -e SOS_FFS_SHARED_DIRS=/home/user/data:/data \
+  -v /home/user/ontology:/ontology:ro \
+  ghcr.io/dfg-sos/file-format-service:latest
 ```
 
-#### docker compose
-
-`docker-compose.yml` runs the API:
+Local ontologies are then referenced as `file:///ontology/<file>.owl`. `docker-compose.yml` runs the same image with these mounts as commented examples:
 
 ```shell
-docker compose up --build
+docker compose up -d
 ```
-
-The API is available at `http://localhost:8000`. Ontologies are fetched from their `ontology_schema_url` (see [Runtime Requirements](#runtime-requirements)).
-
-To validate files on the host without uploading them (`/api/v1/validate/local`), mount the host directory read-only into the `api` container and map it via `SOS_FFS_SHARED_DIRS`. `docker-compose.yml` contains a commented example:
-
-```yaml
-services:
-  api:
-    environment:
-      SOS_FFS_SHARED_DIRS: /home/user/data:/data
-    volumes:
-      - /home/user/data:/data:ro
-```
-
-Clients keep sending host paths (`/home/user/data/...`); the service reads them under `/data`.
 
 ### Runtime Requirements
 
 - Any OWL/RDF ontology used by the `/compatibility` endpoint must be reachable via its `ontology_schema_url` (HTTP/HTTPS or local `file://` URIs).
-- The mapping files in `mappings/` must be present for format translation to work.
+- The appropriate mapping files in `mappings/` must be present or mounted for ontology-format to validator-identifier translation to work.

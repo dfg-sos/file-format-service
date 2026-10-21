@@ -1,18 +1,19 @@
 services:
   api:
-    build:
-      context: .
+    image: ghcr.io/dfg-sos/file-format-service:latest
     ports:
       - "8000:8000"
     platform: linux/amd64
-    environment:
-      SOS_FFS_MAPPINGS_DIR: mappings
+    # environment:
       # Validate files on the host in place via /api/v1/validate/local:
       # mount the host directory read-only and map host path -> mount point.
       # Clients then send host paths like /home/user/data/run42/out.shp.
     #   SOS_FFS_SHARED_DIRS: ${PWD}/tmp/:/data
     # volumes:
     #   - ${PWD}/tmp/:/data:ro
+      # Custom format mappings (*.json): added to the bundled ones, a file for
+      # an already bundled ontology_uri overrides it.
+    #   - ${PWD}/my-mappings/:/app/mappings/custom:ro
       # Use local ontologies in /api/v1/compatibility and /api/v1/format-info:
       # mount them read-only and reference them by their path in the container,
       # e.g. "ontology_schema_url": "file:///ontology/eo-formats.owl".
