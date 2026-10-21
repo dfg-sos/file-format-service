@@ -14,9 +14,12 @@ from collections import Counter
 from pathlib import Path
 from typing import Optional, Set
 
-from rdflib import Graph, OWL, RDFS, RDF, URIRef
+from rdflib import BNode, Graph, OWL, RDFS, RDF, URIRef
 
 logger = logging.getLogger(__name__)
+
+# Predicates already exposed as parents / children / equivalents.
+_STRUCTURAL_PREDICATES = {RDF.type, RDFS.subClassOf, OWL.equivalentClass}
 
 
 class FormatOntology:
@@ -104,15 +107,25 @@ class FormatOntology:
         If ``fmt`` already starts with ``http://`` or ``https://`` it is
         returned unchanged. Otherwise it is prefixed with the ontology
         namespace (if one was inferred). A namespace that already ends in
-        ``/`` or ``#`` is used as is; otherwise ``/`` is inserted.
+        ``/`` or ``#`` is used as is. Otherwise ``#`` is inserted if that
+        yields a declared class (ontology IRI ``…/eo-formats`` with classes
+        ``…/eo-formats#GeoTIFF``), and ``/`` if not.
         """
         if fmt.startswith("http://") or fmt.startswith("https://"):
             return fmt
         if self._namespace:
             if self._namespace.endswith(("/", "#")):
                 return self._namespace + fmt
+            hash_iri = self._namespace + "#" + fmt
+            if self._is_class(hash_iri):
+                return hash_iri
             return self._namespace + "/" + fmt
         return fmt
+
+    def _is_class(self, iri: str) -> bool:
+        """Check whether ``iri`` is the subject of an ``owl:Class`` / ``rdfs:Class`` declaration."""
+        uri = URIRef(iri)
+        return (uri, RDF.type, OWL.Class) in self.graph or (uri, RDF.type, RDFS.Class) in self.graph
 
     def is_defined(self, fmt: str) -> bool:
         """Check whether ``fmt`` is declared as a class in the ontology.
@@ -121,12 +134,7 @@ class FormatOntology:
         ``rdf:type owl:Class`` (or ``rdfs:Class``) triple. Being merely
         referenced as the object of some triple is not enough.
         """
-        fmt_uri = URIRef(self._expand_id(fmt))
-        return (fmt_uri, RDF.type, OWL.Class) in self.graph or (
-            fmt_uri,
-            RDF.type,
-            RDFS.Class,
-        ) in self.graph
+        return self._is_class(self._expand_id(fmt))
 
     # ------------------------------------------------------------------
     # Core logic (mirrors cwl-utils formatSubclassOf)
@@ -242,6 +250,22 @@ class FormatOntology:
         for _s, _p, o in self.graph.triples((fmt_uri, pred_uri, None)):
             values.append(str(o))
         return values
+
+    def get_annotations(self, fmt: str) -> dict[str, list[str]]:
+        """Return all annotations of ``fmt``, keyed by predicate IRI.
+
+        Ontology-agnostic: every predicate of the class is included, except
+        the structural ones (``rdf:type``, ``rdfs:subClassOf``,
+        ``owl:equivalentClass``) and blank-node objects such as OWL
+        restrictions. Keys and values are sorted.
+        """
+        fmt_uri = URIRef(self._expand_id(fmt))
+        annotations: dict[str, list[str]] = {}
+        for _s, p, o in self.graph.triples((fmt_uri, None, None)):
+            if p in _STRUCTURAL_PREDICATES or isinstance(o, BNode):
+                continue
+            annotations.setdefault(str(p), []).append(str(o))
+        return {p: sorted(values) for p, values in sorted(annotations.items())}
 
     def get_equivalents(self, fmt: str) -> list[str]:
         """Return all equivalent classes of ``fmt``."""

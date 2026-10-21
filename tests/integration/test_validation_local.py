@@ -13,8 +13,8 @@ from service.shared_paths import SharedPathResolver
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 
-GEOJSON = {"ontology_namespace": "http://edamontology.org", "format_identifier": "format_4106"}
-SHAPEFILE = {"ontology_namespace": "http://edamontology.org", "format_identifier": "format_4119"}
+GEOJSON = {"ontology_namespace": "https://w3id.org/sos/eo-formats#", "format_identifier": "GeoJSON"}
+SHAPEFILE = {"ontology_namespace": "https://w3id.org/sos/eo-formats#", "format_identifier": "Shapefile"}
 
 
 def _client_with_shared_dirs(*dirs: Path) -> TestClient:

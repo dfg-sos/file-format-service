@@ -52,8 +52,8 @@ ex:child_of_undeclared a owl:Class ;
 
 
 @pytest.fixture(scope="session")
-def edam_ontology() -> FormatOntology:
-    return FormatOntology.from_source(REPO_ROOT / "ontology" / "edamontology_adapted.org.owl")
+def eo_ontology() -> FormatOntology:
+    return FormatOntology.from_source(REPO_ROOT / "ontology" / "eo-formats.owl")
 
 
 @pytest.fixture

@@ -13,4 +13,5 @@ __pycache__
 # IDE
 .vscode
 # Testing
-tmp
+tmp# Custom format mappings
+mappings/custom

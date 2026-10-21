@@ -3,11 +3,12 @@
 from pathlib import Path
 
 import pytest
-from rdflib import Graph
+from rdflib import RDF, RDFS, Graph
 
 from core import FormatOntology
 
 EX = "http://example.org/"
+EO = "https://w3id.org/sos/eo-formats#"
 
 
 class TestLoading:
@@ -74,16 +75,29 @@ class TestExpandId:
         ontology = FormatOntology.from_bytes(ttl, format="turtle")
         assert ontology.is_defined("vector")
 
+    def test_hash_classes_under_ontology_iri_without_separator(self) -> None:
+        ttl = b"""
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        <http://c.org/onto> a owl:Ontology .
+        <http://c.org/onto#vector> a owl:Class .
+        """
+        ontology = FormatOntology.from_bytes(ttl, format="turtle")
+        assert ontology._expand_id("vector") == "http://c.org/onto#vector"
+        assert ontology._expand_id("unknown") == "http://c.org/onto/unknown"
+
+    def test_eo_formats_short_id(self, eo_ontology: FormatOntology) -> None:
+        assert eo_ontology._expand_id("GeoTIFF") == EO + "GeoTIFF"
+
 
 class TestIsDefined:
-    def test_defined_format(self, edam_ontology: FormatOntology) -> None:
-        assert edam_ontology.is_defined("format_4119") is True
+    def test_defined_format(self, eo_ontology: FormatOntology) -> None:
+        assert eo_ontology.is_defined("Shapefile") is True
 
-    def test_defined_format_full_iri(self, edam_ontology: FormatOntology) -> None:
-        assert edam_ontology.is_defined("http://edamontology.org/format_4119") is True
+    def test_defined_format_full_iri(self, eo_ontology: FormatOntology) -> None:
+        assert eo_ontology.is_defined("https://w3id.org/sos/eo-formats#Shapefile") is True
 
-    def test_undefined_format(self, edam_ontology: FormatOntology) -> None:
-        assert edam_ontology.is_defined("format_99999") is False
+    def test_undefined_format(self, eo_ontology: FormatOntology) -> None:
+        assert eo_ontology.is_defined("format_99999") is False
 
     def test_rdfs_class_is_defined(self, toy_ontology: FormatOntology) -> None:
         assert toy_ontology.is_defined("rdfs_only") is True
@@ -158,6 +172,21 @@ class TestIntrospection:
 
     def test_values_missing(self, toy_ontology: FormatOntology) -> None:
         assert toy_ontology.get_values("vector", EX + "file_extension") == []
+
+    def test_annotations(self, toy_ontology: FormatOntology) -> None:
+        assert toy_ontology.get_annotations("shapefile") == {
+            EX + "file_extension": ["dbf", "shp", "shx"],
+            str(RDFS.comment): ["Composite vector format."],
+            str(RDFS.label): ["Shapefile"],
+        }
+
+    def test_annotations_skip_structural_predicates(self, toy_ontology: FormatOntology) -> None:
+        annotations = toy_ontology.get_annotations("shapefile")
+        assert str(RDF.type) not in annotations
+        assert str(RDFS.subClassOf) not in annotations
+
+    def test_annotations_undefined_format(self, toy_ontology: FormatOntology) -> None:
+        assert toy_ontology.get_annotations("format_99999") == {}
 
     def test_parents(self, toy_ontology: FormatOntology) -> None:
         assert toy_ontology.get_parents("shapefile") == [EX + "vector"]

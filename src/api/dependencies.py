@@ -4,6 +4,7 @@ Provides singleton instances of settings, services, and utilities so that
 routers can receive them via ``Depends`` without manual construction.
 """
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -11,10 +12,12 @@ from fastapi import Depends, Form, HTTPException
 from format_validator import FormatTranslator
 
 from api.schemas.validation import FileFormatValidationRequest
-from config import Settings
+from config import BUNDLED_MAPPINGS_DIR, CUSTOM_MAPPINGS_DIR, Settings
 from core import FormatOntology
 from service.ontology_registry import OntologyRegistry
 from service.shared_paths import SharedPathResolver
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache
@@ -23,11 +26,26 @@ def get_settings() -> Settings:
     return Settings()
 
 
+def load_format_translator(bundled_dir: Path, custom_dir: Path) -> FormatTranslator:
+    """Load the bundled mappings, then the custom ones if ``custom_dir`` exists.
+
+    Custom mappings are loaded last, so they add new ontologies and override
+    bundled mappings for the same ``ontology_uri``.
+    """
+    translator = FormatTranslator(bundled_dir)
+    if custom_dir.is_dir():
+        if not any(custom_dir.glob("*.json")):
+            logger.warning("No mapping files (*.json) found in %s", custom_dir)
+        # FormatTranslator takes a single directory; load the second into the same instance.
+        translator._load_ontology_mappings(custom_dir)
+    logger.info("Loaded format mappings for ontologies: %s", translator.get_loaded_ontologies())
+    return translator
+
+
 @lru_cache
 def get_format_translator() -> FormatTranslator:
-    """Return cached ``FormatTranslator`` loaded from the configured directory."""
-    settings = get_settings()
-    return FormatTranslator(settings.mappings_dir)
+    """Return cached ``FormatTranslator`` with the bundled and custom mappings."""
+    return load_format_translator(BUNDLED_MAPPINGS_DIR, CUSTOM_MAPPINGS_DIR)
 
 
 @lru_cache

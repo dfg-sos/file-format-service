@@ -7,6 +7,14 @@ from typing import Annotated, Any
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+# Mapping files (ontology format ID -> validator format ID) shipped with the
+# service: ``/app/mappings`` in the image, ``<repo>/mappings`` locally.
+BUNDLED_MAPPINGS_DIR = Path(__file__).resolve().parent.parent / "mappings"
+# Additional mapping files (mount point in the container), loaded after the
+# bundled ones so a file for an already bundled ontology overrides it.
+# Skipped if absent.
+CUSTOM_MAPPINGS_DIR = BUNDLED_MAPPINGS_DIR / "custom"
+
 
 @dataclass(frozen=True)
 class SharedDir:
@@ -35,12 +43,11 @@ class Settings(BaseSettings):
     """Service-wide settings loaded from environment variables.
 
     Environment variables are prefixed with ``SOS_FFS_``,
-    e.g. ``SOS_FFS_MAPPINGS_DIR``.
+    e.g. ``SOS_FFS_SHARED_DIRS``.
     """
 
     model_config = SettingsConfigDict(env_prefix="SOS_FFS_")
 
-    mappings_dir: Path = Path("mappings")
     app_name: str = "SOS File Format Service"
     app_version: str = "0.1.0"
     host: str = "0.0.0.0"

@@ -25,8 +25,8 @@ def shp(tmp_path: Path) -> Path:
 
 def _dto(file_path: Path, **overrides) -> ValidationRequestDTO:
     fields = {
-        "ontology_namespace": "http://edamontology.org",
-        "format_identifier": "format_4119",
+        "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+        "format_identifier": "Shapefile",
         "mode": ValidationMode.FULL,
         "file_path": file_path,
     }
