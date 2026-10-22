@@ -1,32 +1,60 @@
-"""Shared fixtures for the integration tests."""
+"""Fixtures for the integration tests."""
 
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from httpx import Response
 
 from api.app import create_app
+from api.dependencies import get_format_translator, load_format_translator
+
+from ..conftest import DATA, EXAMPLE_NAMESPACE, EXAMPLE_ONTOLOGY, MAPPINGS
+
+# Validation form fields for formats of the example ontology.
+GEOJSON_FORM = {"ontology_namespace": EXAMPLE_NAMESPACE, "format_identifier": "GeoJSON"}
+SHAPEFILE_FORM = {"ontology_namespace": EXAMPLE_NAMESPACE, "format_identifier": "Shapefile"}
+
+
+def create_test_app() -> FastAPI:
+    """Create the app with the example mapping instead of ``mappings/``."""
+    app = create_app()
+    translator = load_format_translator(MAPPINGS)
+    app.dependency_overrides[get_format_translator] = lambda: translator
+    return app
+
+
+def upload(client: TestClient, form: dict, primary: Path, secondary: list[Path] = []) -> Response:
+    """POST ``primary`` and ``secondary`` files with ``form`` to ``/validate``."""
+    handles = [p.open("rb") for p in [primary, *secondary]]
+    try:
+        files = [("file", (primary.name, handles[0], "application/octet-stream"))]
+        files += [("secondary_files", (p.name, h, "application/octet-stream")) for p, h in zip(secondary, handles[1:])]
+        return client.post("/api/v1/validate", files=files, data=form)
+    finally:
+        for h in handles:
+            h.close()
 
 
 @pytest.fixture
 def client() -> TestClient:
-    app = create_app()
-    return TestClient(app)
+    return TestClient(create_test_app())
 
 
 @pytest.fixture
 def ontology_file() -> Path:
-    return Path(__file__).parent.parent.parent / "ontology" / "eo-formats.owl"
+    return EXAMPLE_ONTOLOGY
 
 
 @pytest.fixture
 def sample_geojson() -> Path:
-    return Path(__file__).parent.parent / "fixtures" / "sample.geojson"
+    return DATA / "sample.geojson"
 
 
 @pytest.fixture
 def sample_geojson_with_point() -> Path:
-    return Path(__file__).parent.parent / "fixtures" / "sample_point.geojson"
+    return DATA / "sample_point.geojson"
 
 
 @pytest.fixture

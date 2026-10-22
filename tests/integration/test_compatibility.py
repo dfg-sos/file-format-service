@@ -131,7 +131,7 @@ class TestCompatibilityEndpoint:
         assert response.status_code == 422
         detail = response.json()["detail"]
         assert ontology_file.as_uri() in detail["message"]
-        assert detail["unknown_formats"] == ["https://w3id.org/sos/eo-formats/format_99999"]
+        assert detail["unknown_formats"] == ["https://example.org/formats/format_99999"]
 
     def test_compatibility_unknown_expected_format(
         self, client: TestClient, ontology_file: Path
@@ -145,7 +145,7 @@ class TestCompatibilityEndpoint:
         response = client.post("/api/v1/compatibility", json=payload)
         assert response.status_code == 422
         assert response.json()["detail"]["unknown_formats"] == [
-            "https://w3id.org/sos/eo-formats/format_99998"
+            "https://example.org/formats/format_99998"
         ]
 
     def test_compatibility_both_formats_unknown(
@@ -160,6 +160,23 @@ class TestCompatibilityEndpoint:
         response = client.post("/api/v1/compatibility", json=payload)
         assert response.status_code == 422
         assert response.json()["detail"]["unknown_formats"] == [
-            "https://w3id.org/sos/eo-formats/format_99998",
-            "https://w3id.org/sos/eo-formats/format_99999",
+            "https://example.org/formats/format_99998",
+            "https://example.org/formats/format_99999",
         ]
+
+
+def test_compatibility_in_every_serialisation(
+    client: TestClient, tmp_path: Path, example_serialisation: tuple[str, bytes]
+) -> None:
+    """The same ontology gives the same answer whatever its serialisation."""
+    extension, content = example_serialisation
+    schema = tmp_path / f"example-formats{extension}"
+    schema.write_bytes(content)
+    payload = {
+        "expected_format": "Vector",
+        "actual_format": "Shapefile",
+        "ontology_schema_url": schema.as_uri(),
+    }
+    response = client.post("/api/v1/compatibility", json=payload)
+    assert response.status_code == 200
+    assert response.json()["compatible"] is True

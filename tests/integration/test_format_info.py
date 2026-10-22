@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from ..conftest import EXAMPLE_NAMESPACE
+
 
 class TestFormatInfoEndpoint:
     def test_format_info_shapefile(self, client, ontology_file):
@@ -12,12 +14,12 @@ class TestFormatInfoEndpoint:
         response = client.post("/api/v1/format-info", json=payload)
         assert response.status_code == 200
         data = response.json()
-        assert data["format_uri"] == "https://w3id.org/sos/eo-formats#Shapefile"
+        assert data["format_uri"] == EXAMPLE_NAMESPACE + "Shapefile"
         assert data["label"] == "Shapefile"
         assert "composite format" in (data["comment"] or "").lower()
-        assert data["parents"] == ["https://w3id.org/sos/eo-formats#Vector"]
+        assert data["parents"] == [EXAMPLE_NAMESPACE + "Vector"]
         annotations = data["annotations"]
-        assert annotations["https://w3id.org/sos/eo-formats#fileExtension"] == ["dbf", "shp", "shx"]
+        assert annotations[EXAMPLE_NAMESPACE + "fileExtension"] == ["dbf", "shp", "shx"]
         assert "http://www.w3.org/2000/01/rdf-schema#subClassOf" not in annotations
 
     def test_format_info_with_children(self, client, ontology_file):
@@ -28,7 +30,7 @@ class TestFormatInfoEndpoint:
         response = client.post("/api/v1/format-info", json=payload)
         assert response.status_code == 200
         data = response.json()
-        assert "https://w3id.org/sos/eo-formats#Shapefile" in data["children"]
+        assert EXAMPLE_NAMESPACE + "Shapefile" in data["children"]
 
     def test_format_info_missing_schema_url(self, client):
         payload = {"format_identifier": "Shapefile"}
@@ -72,4 +74,4 @@ class TestFormatInfoEndpoint:
         assert response.status_code == 404
         detail = response.json()["detail"]
         assert ontology_file.as_uri() in detail["message"]
-        assert detail["unknown_formats"] == ["https://w3id.org/sos/eo-formats/format_99999"]
+        assert detail["unknown_formats"] == ["https://example.org/formats/format_99999"]

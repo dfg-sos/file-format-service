@@ -15,6 +15,8 @@ from format_validator import (
 
 from adapter.request_builder import HTTPValidationRequestBuilder, ValidationRequestDTO
 
+from ..conftest import EXAMPLE_NAMESPACE
+
 
 @pytest.fixture
 def shp(tmp_path: Path) -> Path:
@@ -25,7 +27,7 @@ def shp(tmp_path: Path) -> Path:
 
 def _dto(file_path: Path, **overrides) -> ValidationRequestDTO:
     fields = {
-        "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+        "ontology_namespace": EXAMPLE_NAMESPACE,
         "format_identifier": "Shapefile",
         "mode": ValidationMode.FULL,
         "file_path": file_path,

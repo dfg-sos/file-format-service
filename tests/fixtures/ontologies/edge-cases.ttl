@@ -1,0 +1,39 @@
+# Edge cases for FormatOntology: direct and transitive subclasses,
+# equivalence, cycles, an rdfs:Class-typed class and a parent that is never
+# declared as a class. Not a realistic format ontology, see example-formats.ttl.
+
+@prefix ex:   <http://example.org/edge-cases/> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<http://example.org/edge-cases/> a owl:Ontology .
+
+ex:vector a owl:Class .
+
+ex:shapefile a owl:Class ;
+    rdfs:subClassOf ex:vector ;
+    rdfs:label "Shapefile" ;
+    rdfs:comment "Composite vector format." ;
+    ex:file_extension "shp", "shx", "dbf" .
+
+ex:zipped_shapefile a owl:Class ;
+    rdfs:subClassOf ex:shapefile .
+
+ex:raster a owl:Class .
+
+ex:geotiff a owl:Class ;
+    rdfs:subClassOf ex:raster .
+
+ex:tiff a owl:Class ;
+    owl:equivalentClass ex:geotiff .
+
+ex:cyc_a a owl:Class ;
+    rdfs:subClassOf ex:cyc_b .
+
+ex:cyc_b a owl:Class ;
+    rdfs:subClassOf ex:cyc_a .
+
+ex:rdfs_only a rdfs:Class .
+
+ex:child_of_undeclared a owl:Class ;
+    rdfs:subClassOf ex:undeclared .

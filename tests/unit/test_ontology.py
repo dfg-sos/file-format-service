@@ -7,13 +7,13 @@ from rdflib import RDF, RDFS, Graph
 
 from core import FormatOntology
 
-EX = "http://example.org/"
-EO = "https://w3id.org/sos/eo-formats#"
+from ..conftest import EXAMPLE_NAMESPACE
+from .conftest import EDGE_CASE_NAMESPACE
 
 
 class TestLoading:
-    def test_from_bytes_turtle(self, toy_ontology: FormatOntology) -> None:
-        assert len(toy_ontology.graph) > 0
+    def test_from_bytes_turtle(self, edge_case_ontology: FormatOntology) -> None:
+        assert len(edge_case_ontology.graph) > 0
 
     def test_from_bytes_invalid_content_raises(self) -> None:
         with pytest.raises(Exception):
@@ -27,8 +27,8 @@ class TestLoading:
 
 
 class TestNamespaceInference:
-    def test_uses_owl_ontology_subject(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology._namespace == EX
+    def test_uses_owl_ontology_subject(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology._namespace == EDGE_CASE_NAMESPACE
 
     def test_falls_back_to_most_common_class_prefix(self) -> None:
         ttl = b"""
@@ -48,12 +48,12 @@ class TestNamespaceInference:
 
 
 class TestExpandId:
-    def test_short_id_is_expanded(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology._expand_id("shapefile") == EX + "shapefile"
+    def test_short_id_is_expanded(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology._expand_id("shapefile") == EDGE_CASE_NAMESPACE + "shapefile"
 
     @pytest.mark.parametrize("iri", ["http://other.org/fmt", "https://other.org/fmt"])
-    def test_full_iri_is_unchanged(self, toy_ontology: FormatOntology, iri: str) -> None:
-        assert toy_ontology._expand_id(iri) == iri
+    def test_full_iri_is_unchanged(self, edge_case_ontology: FormatOntology, iri: str) -> None:
+        assert edge_case_ontology._expand_id(iri) == iri
 
     @pytest.mark.parametrize("namespace", ["http://c.org", "http://c.org/"])
     def test_trailing_slash_is_normalised(self, namespace: str) -> None:
@@ -85,121 +85,121 @@ class TestExpandId:
         assert ontology._expand_id("vector") == "http://c.org/onto#vector"
         assert ontology._expand_id("unknown") == "http://c.org/onto/unknown"
 
-    def test_eo_formats_short_id(self, eo_ontology: FormatOntology) -> None:
-        assert eo_ontology._expand_id("GeoTIFF") == EO + "GeoTIFF"
+    def test_example_short_id(self, example_ontology: FormatOntology) -> None:
+        assert example_ontology._expand_id("GeoTIFF") == EXAMPLE_NAMESPACE + "GeoTIFF"
 
 
 class TestIsDefined:
-    def test_defined_format(self, eo_ontology: FormatOntology) -> None:
-        assert eo_ontology.is_defined("Shapefile") is True
+    def test_defined_format(self, example_ontology: FormatOntology) -> None:
+        assert example_ontology.is_defined("Shapefile") is True
 
-    def test_defined_format_full_iri(self, eo_ontology: FormatOntology) -> None:
-        assert eo_ontology.is_defined("https://w3id.org/sos/eo-formats#Shapefile") is True
+    def test_defined_format_full_iri(self, example_ontology: FormatOntology) -> None:
+        assert example_ontology.is_defined(EXAMPLE_NAMESPACE + "Shapefile") is True
 
-    def test_undefined_format(self, eo_ontology: FormatOntology) -> None:
-        assert eo_ontology.is_defined("format_99999") is False
+    def test_undefined_format(self, example_ontology: FormatOntology) -> None:
+        assert example_ontology.is_defined("format_99999") is False
 
-    def test_rdfs_class_is_defined(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_defined("rdfs_only") is True
+    def test_rdfs_class_is_defined(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_defined("rdfs_only") is True
 
-    def test_only_referenced_as_object_is_undefined(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_defined("undeclared") is False
+    def test_only_referenced_as_object_is_undefined(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_defined("undeclared") is False
 
 
 class TestIsSubclass:
-    def test_identity(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("vector", "vector") is True
+    def test_identity(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("vector", "vector") is True
 
-    def test_identity_holds_for_undefined_format(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("nonexistent", "nonexistent") is True
+    def test_identity_holds_for_undefined_format(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("nonexistent", "nonexistent") is True
 
-    def test_short_id_and_full_iri_are_identical(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("vector", EX + "vector") is True
+    def test_short_id_and_full_iri_are_identical(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("vector", EDGE_CASE_NAMESPACE + "vector") is True
 
-    def test_direct_subclass(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("shapefile", "vector") is True
+    def test_direct_subclass(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("shapefile", "vector") is True
 
-    def test_transitive_subclass(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("zipped_shapefile", "vector") is True
+    def test_transitive_subclass(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("zipped_shapefile", "vector") is True
 
-    def test_superclass_is_not_subclass(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("vector", "shapefile") is False
+    def test_superclass_is_not_subclass(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("vector", "shapefile") is False
 
-    def test_unrelated(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("geotiff", "vector") is False
+    def test_unrelated(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("geotiff", "vector") is False
 
-    def test_equivalent_class_forward(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("tiff", "geotiff") is True
+    def test_equivalent_class_forward(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("tiff", "geotiff") is True
 
-    def test_equivalent_class_backward(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("geotiff", "tiff") is True
+    def test_equivalent_class_backward(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("geotiff", "tiff") is True
 
-    def test_subclass_via_equivalent_class(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("tiff", "raster") is True
+    def test_subclass_via_equivalent_class(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("tiff", "raster") is True
 
-    def test_cycle_terminates(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("cyc_a", "vector") is False
+    def test_cycle_terminates(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("cyc_a", "vector") is False
 
-    def test_cycle_members_are_mutual_subclasses(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.is_subclass("cyc_a", "cyc_b") is True
-        assert toy_ontology.is_subclass("cyc_b", "cyc_a") is True
+    def test_cycle_members_are_mutual_subclasses(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.is_subclass("cyc_a", "cyc_b") is True
+        assert edge_case_ontology.is_subclass("cyc_b", "cyc_a") is True
 
 
 class TestAreCompatible:
-    def test_actual_subclass_of_expected(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.are_compatible(expected="vector", actual="shapefile") is True
+    def test_actual_subclass_of_expected(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.are_compatible(expected="vector", actual="shapefile") is True
 
-    def test_actual_superclass_of_expected(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.are_compatible(expected="shapefile", actual="vector") is False
+    def test_actual_superclass_of_expected(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.are_compatible(expected="shapefile", actual="vector") is False
 
 
 class TestIntrospection:
-    def test_label(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_label("shapefile") == "Shapefile"
+    def test_label(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_label("shapefile") == "Shapefile"
 
-    def test_label_missing(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_label("vector") is None
+    def test_label_missing(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_label("vector") is None
 
-    def test_comment(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_comment("shapefile") == "Composite vector format."
+    def test_comment(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_comment("shapefile") == "Composite vector format."
 
-    def test_comment_missing(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_comment("vector") is None
+    def test_comment_missing(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_comment("vector") is None
 
-    def test_values(self, toy_ontology: FormatOntology) -> None:
-        values = toy_ontology.get_values("shapefile", EX + "file_extension")
+    def test_values(self, edge_case_ontology: FormatOntology) -> None:
+        values = edge_case_ontology.get_values("shapefile", EDGE_CASE_NAMESPACE + "file_extension")
         assert sorted(values) == ["dbf", "shp", "shx"]
 
-    def test_values_missing(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_values("vector", EX + "file_extension") == []
+    def test_values_missing(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_values("vector", EDGE_CASE_NAMESPACE + "file_extension") == []
 
-    def test_annotations(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_annotations("shapefile") == {
-            EX + "file_extension": ["dbf", "shp", "shx"],
+    def test_annotations(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_annotations("shapefile") == {
+            EDGE_CASE_NAMESPACE + "file_extension": ["dbf", "shp", "shx"],
             str(RDFS.comment): ["Composite vector format."],
             str(RDFS.label): ["Shapefile"],
         }
 
-    def test_annotations_skip_structural_predicates(self, toy_ontology: FormatOntology) -> None:
-        annotations = toy_ontology.get_annotations("shapefile")
+    def test_annotations_skip_structural_predicates(self, edge_case_ontology: FormatOntology) -> None:
+        annotations = edge_case_ontology.get_annotations("shapefile")
         assert str(RDF.type) not in annotations
         assert str(RDFS.subClassOf) not in annotations
 
-    def test_annotations_undefined_format(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_annotations("format_99999") == {}
+    def test_annotations_undefined_format(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_annotations("format_99999") == {}
 
-    def test_parents(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_parents("shapefile") == [EX + "vector"]
+    def test_parents(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_parents("shapefile") == [EDGE_CASE_NAMESPACE + "vector"]
 
-    def test_parents_are_direct_only(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_parents("zipped_shapefile") == [EX + "shapefile"]
+    def test_parents_are_direct_only(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_parents("zipped_shapefile") == [EDGE_CASE_NAMESPACE + "shapefile"]
 
-    def test_children(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_children("vector") == [EX + "shapefile"]
+    def test_children(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_children("vector") == [EDGE_CASE_NAMESPACE + "shapefile"]
 
-    def test_children_missing(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_children("zipped_shapefile") == []
+    def test_children_missing(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_children("zipped_shapefile") == []
 
-    def test_equivalents_both_directions(self, toy_ontology: FormatOntology) -> None:
-        assert toy_ontology.get_equivalents("tiff") == [EX + "geotiff"]
-        assert toy_ontology.get_equivalents("geotiff") == [EX + "tiff"]
+    def test_equivalents_both_directions(self, edge_case_ontology: FormatOntology) -> None:
+        assert edge_case_ontology.get_equivalents("tiff") == [EDGE_CASE_NAMESPACE + "geotiff"]
+        assert edge_case_ontology.get_equivalents("geotiff") == [EDGE_CASE_NAMESPACE + "tiff"]

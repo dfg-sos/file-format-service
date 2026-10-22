@@ -1,0 +1,56 @@
+# Example format ontology for tests and documentation, paired with
+# ../mappings/example-formats.json. Modelled on the SOS EO formats ontology
+# (https://github.com/dfg-sos/ontologies), but deliberately not a copy of it.
+
+@prefix ex:   <https://example.org/formats#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<https://example.org/formats> a owl:Ontology ;
+    rdfs:label "Example formats" .
+
+ex:fileExtension a owl:AnnotationProperty .
+ex:mediaType a owl:AnnotationProperty .
+
+ex:Raster a owl:Class ;
+    rdfs:label "Raster" .
+
+ex:GeoTIFF a owl:Class ;
+    rdfs:subClassOf ex:Raster ;
+    rdfs:label "GeoTIFF" ;
+    ex:fileExtension "tif", "tiff" ;
+    ex:mediaType "image/tiff; application=geotiff" .
+
+ex:COG a owl:Class ;
+    rdfs:subClassOf ex:GeoTIFF ;
+    rdfs:label "Cloud Optimized GeoTIFF" ;
+    ex:fileExtension "tif", "tiff" ;
+    ex:mediaType "image/tiff; application=geotiff; profile=cloud-optimized" .
+
+ex:Vector a owl:Class ;
+    rdfs:label "Vector" .
+
+ex:Shapefile a owl:Class ;
+    rdfs:subClassOf ex:Vector ;
+    rdfs:label "Shapefile" ;
+    rdfs:comment "Shapefile is a composite format including 3 mandatory files (.shp, .shx, .dbf)." ;
+    rdfs:seeAlso <https://en.wikipedia.org/wiki/Shapefile> ;
+    ex:fileExtension "shp", "shx", "dbf" ;
+    ex:mediaType "x-gis/x-shapefile" .
+
+ex:GeoJSON a owl:Class ;
+    rdfs:subClassOf ex:Vector ;
+    rdfs:label "GeoJSON" ;
+    ex:fileExtension "geojson", "json" ;
+    ex:mediaType "application/geo+json" .
+
+ex:EsriJSON a owl:Class ;
+    rdfs:subClassOf ex:Vector ;
+    rdfs:label "EsriJSON" ;
+    ex:fileExtension "json" .
+
+ex:GeoPackage a owl:Class ;
+    rdfs:subClassOf ex:Vector ;
+    rdfs:label "GeoPackage" ;
+    ex:fileExtension "gpkg" ;
+    ex:mediaType "application/geopackage+sqlite3" .
