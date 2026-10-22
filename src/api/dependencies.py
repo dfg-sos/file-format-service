@@ -12,7 +12,7 @@ from fastapi import Depends, Form, HTTPException
 from format_validator import FormatTranslator
 
 from api.schemas.validation import FileFormatValidationRequest
-from config import BUNDLED_MAPPINGS_DIR, CUSTOM_MAPPINGS_DIR, Settings
+from config import MAPPINGS_DIR, Settings
 from core import FormatOntology
 from service.ontology_registry import OntologyRegistry
 from service.shared_paths import SharedPathResolver
@@ -26,26 +26,24 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def load_format_translator(bundled_dir: Path, custom_dir: Path) -> FormatTranslator:
-    """Load the bundled mappings, then the custom ones if ``custom_dir`` exists.
+def load_format_translator(mappings_dir: Path) -> FormatTranslator:
+    """Load the mapping files (``*.json``) in ``mappings_dir``.
 
-    Custom mappings are loaded last, so they add new ontologies and override
-    bundled mappings for the same ``ontology_uri``.
+    A missing or empty directory yields a translator without mappings, which
+    rejects every format; this is logged as a warning.
     """
-    translator = FormatTranslator(bundled_dir)
-    if custom_dir.is_dir():
-        if not any(custom_dir.glob("*.json")):
-            logger.warning("No mapping files (*.json) found in %s", custom_dir)
-        # FormatTranslator takes a single directory; load the second into the same instance.
-        translator._load_ontology_mappings(custom_dir)
-    logger.info("Loaded format mappings for ontologies: %s", translator.get_loaded_ontologies())
+    translator = FormatTranslator(mappings_dir)
+    if translator.get_loaded_ontologies():
+        logger.info("Loaded format mappings for ontologies: %s", translator.get_loaded_ontologies())
+    else:
+        logger.warning("No mapping files (*.json) found in %s, validation rejects every format", mappings_dir)
     return translator
 
 
 @lru_cache
 def get_format_translator() -> FormatTranslator:
-    """Return cached ``FormatTranslator`` with the bundled and custom mappings."""
-    return load_format_translator(BUNDLED_MAPPINGS_DIR, CUSTOM_MAPPINGS_DIR)
+    """Return cached ``FormatTranslator`` with the mappings in ``MAPPINGS_DIR``."""
+    return load_format_translator(MAPPINGS_DIR)
 
 
 @lru_cache

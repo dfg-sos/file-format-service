@@ -11,12 +11,12 @@ services:
     #   SOS_FFS_SHARED_DIRS: ${PWD}/tmp/:/data
     # volumes:
     #   - ${PWD}/tmp/:/data:ro
-      # Custom format mappings (*.json): added to the bundled ones, a file for
-      # an already bundled ontology_uri overrides it.
-    #   - ${PWD}/my-mappings/:/app/mappings/custom:ro
+      # Format mappings (*.json), one per ontology namespace. None are shipped,
+      # validation needs at least one.
+    #   - ${PWD}/mappings/:/app/mappings:ro
       # Use local ontologies in /api/v1/compatibility and /api/v1/format-info:
       # mount them read-only and reference them by their path in the container,
-      # e.g. "ontology_schema_url": "file:///ontology/eo-formats.owl".
+      # e.g. "ontology_schema_url": "file:///ontology/my-formats.owl".
     #   - ${PWD}/ontology/:/ontology:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]

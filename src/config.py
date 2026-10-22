@@ -7,13 +7,10 @@ from typing import Annotated, Any
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
-# Mapping files (ontology format ID -> validator format ID) shipped with the
-# service: ``/app/mappings`` in the image, ``<repo>/mappings`` locally.
-BUNDLED_MAPPINGS_DIR = Path(__file__).resolve().parent.parent / "mappings"
-# Additional mapping files (mount point in the container), loaded after the
-# bundled ones so a file for an already bundled ontology overrides it.
-# Skipped if absent.
-CUSTOM_MAPPINGS_DIR = BUNDLED_MAPPINGS_DIR / "custom"
+# Mapping files (ontology format ID -> validator format ID): ``<repo>/mappings``
+# locally, ``/app/mappings`` in the image (mount point). No mappings are shipped
+# with the service, so validation needs at least one file here.
+MAPPINGS_DIR = Path(__file__).resolve().parent.parent / "mappings"
 
 
 @dataclass(frozen=True)

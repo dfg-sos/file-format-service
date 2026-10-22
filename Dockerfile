@@ -27,6 +27,5 @@ COPY --from=build /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 WORKDIR /app
 COPY src/ src/
-COPY mappings/ mappings/
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]

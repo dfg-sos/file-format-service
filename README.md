@@ -2,7 +2,7 @@
 
 A FastAPI REST API service for validating Earth Observation (EO) file formats and checking ontology-based format compatibility.
 
-The service bridges ontology-specific format identifiers (e.g. from the [EO formats ontology](#eo-formats-ontology)) with an external `format_validator` module, enabling automated validation of uploaded geospatial files. Furthermore static compatibility checks can be executed upon existing OWL/RDF ontologies.
+The service bridges ontology-specific format identifiers (e.g. from the [SOS EO formats ontology](https://github.com/dfg-sos/ontologies)) with an external `format_validator` module, enabling automated validation of uploaded geospatial files. Furthermore static compatibility checks can be executed upon existing OWL/RDF ontologies. The service ships no ontology of its own, see [Ontologies and mappings](#ontologies-and-mappings).
 
 ## Features
 
@@ -30,12 +30,14 @@ The service follows a layered architecture:
 | `POST` | `/api/v1/compatibility` | Check compatibility between two format identifiers |
 | `POST` | `/api/v1/format-info` | Retrieve detailed metadata for a format from an ontology |
 
+The examples below use the [example ontology and mapping](#example-ontology-and-mapping) from `tests/fixtures/`, with `https://example.org/formats.ttl` as a placeholder for the ontology's URL.
+
 ### Example: Validate a File
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/validate" \
   -F "file=@/path/to/your/file.geojson" \
-  -F "ontology_namespace=https://w3id.org/sos/eo-formats#" \
+  -F "ontology_namespace=https://example.org/formats#" \
   -F "format_identifier=GeoJSON" \
   -F "mode=full"
 ```
@@ -50,7 +52,7 @@ curl -X POST "http://localhost:8000/api/v1/validate" \
   -F "secondary_files=@/path/to/roads.shx" \
   -F "secondary_files=@/path/to/roads.dbf" \
   -F "secondary_files=@/path/to/roads.prj" \
-  -F "ontology_namespace=https://w3id.org/sos/eo-formats#" \
+  -F "ontology_namespace=https://example.org/formats#" \
   -F "format_identifier=Shapefile" \
   -F "mode=structural"
 ```
@@ -73,7 +75,7 @@ curl -X POST "http://localhost:8000/api/v1/validate/local" \
       "/home/user/data/run42/roads.dbf",
       "/home/user/data/run42/roads.prj"
     ],
-    "ontology_namespace": "https://w3id.org/sos/eo-formats#",
+    "ontology_namespace": "https://example.org/formats#",
     "format_identifier": "Shapefile",
     "mode": "full",
     "expected_crs": "EPSG:4326"
@@ -110,7 +112,7 @@ curl -X POST "http://localhost:8000/api/v1/compatibility" \
   -d '{
     "expected_format": "Vector",
     "actual_format": "Shapefile",
-    "ontology_schema_url": "https://example.org/ontology.owl"
+    "ontology_schema_url": "https://example.org/formats.ttl"
   }'
 ```
 
@@ -119,8 +121,8 @@ curl -X POST "http://localhost:8000/api/v1/compatibility" \
 curl -X POST "http://localhost:8000/api/v1/format-info" \
   -H "Content-Type: application/json" \
   -d '{
-    "format_identifier": "https://w3id.org/sos/eo-formats#Shapefile",
-    "ontology_schema_url": "https://example.org/ontology.owl"
+    "format_identifier": "https://example.org/formats#Shapefile",
+    "ontology_schema_url": "https://example.org/formats.ttl"
   }'
 ```
 
@@ -130,7 +132,7 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
   -H "Content-Type: application/json" \
   -d '{
     "format_identifier": "Shapefile",
-    "ontology_schema_url": "https://example.org/ontology.owl"
+    "ontology_schema_url": "https://example.org/formats.ttl"
   }'
 ```
 
@@ -138,17 +140,17 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
 
 ```json
 {
-  "format_uri": "https://w3id.org/sos/eo-formats#Shapefile",
+  "format_uri": "https://example.org/formats#Shapefile",
   "label": "Shapefile",
-  "comment": "Shapefile is a composite format including 3 mandatory files...",
-  "parents": ["https://w3id.org/sos/eo-formats#Vector"],
+  "comment": "Shapefile is a composite format including 3 mandatory files (.shp, .shx, .dbf).",
+  "parents": ["https://example.org/formats#Vector"],
   "children": [],
   "equivalents": [],
-  "see_also": ["https://en.wikipedia.org/wiki/Shapefile", "..."],
+  "see_also": ["https://en.wikipedia.org/wiki/Shapefile"],
   "annotations": {
     "http://www.w3.org/2000/01/rdf-schema#label": ["Shapefile"],
-    "https://w3id.org/sos/eo-formats#fileExtension": ["dbf", "shp", "shx"],
-    "https://w3id.org/sos/eo-formats#mediaType": ["x-gis/x-shapefile (not in IANA)"],
+    "https://example.org/formats#fileExtension": ["dbf", "shp", "shx"],
+    "https://example.org/formats#mediaType": ["x-gis/x-shapefile"],
     "...": []
   }
 }
@@ -170,10 +172,10 @@ The error body lists exactly the unknown formats as expanded IRIs, so you can se
 ```json
 {
   "detail": {
-    "message": "Format(s) not defined in ontology https://example.org/ontology.owl",
+    "message": "Format(s) not defined in ontology https://example.org/formats.ttl",
     "unknown_formats": [
-      "https://example.org/format_99998",
-      "https://example.org/format_99999"
+      "https://example.org/formats/format_99998",
+      "https://example.org/formats/format_99999"
     ]
   }
 }
@@ -183,9 +185,25 @@ The error body lists exactly the unknown formats as expanded IRIs, so you can se
 
 The service fetches the ontology once, infers its namespace automatically, and caches the parsed graph for subsequent requests with the same `ontology_schema_url`.
 
-## EO formats ontology
+## Ontologies and mappings
 
-`ontology/eo-formats.owl` defines the Earth Observation file formats as a standalone OWL ontology in the namespace `https://w3id.org/sos/eo-formats#`, with readable class names (`GeoTIFF`, `COG`, `Shapefile`, `Raster`, `Vector`, …). It does not depend on any other ontology. Use the short name (`Shapefile`) or the full IRI (`https://w3id.org/sos/eo-formats#Shapefile`) as format identifier, and `https://w3id.org/sos/eo-formats#` as `ontology_namespace` for validation.
+The service is not tied to a particular ontology. The two kinds of endpoints need different inputs:
+
+- `/compatibility` and `/format-info` load the ontology from the `ontology_schema_url` of the request. Nothing has to be configured. Accepted serialisations are RDF/XML (`.owl`, `.rdf`), Turtle (`.ttl`), N-Triples (`.nt`), N3 (`.n3`) and JSON-LD (`.jsonld`). The format is taken from the file extension, and for HTTP(S) URLs first from the `Content-Type` of the response.
+- `/validate` and `/validate/local` translate the `format_identifier` of the ontology given by `ontology_namespace` into a format of the validator. This requires a [mapping file](#format-mappings) for that namespace.
+
+The SOS vocabularies, including the EO file formats ontology, are maintained in [dfg-sos/ontologies](https://github.com/dfg-sos/ontologies) and published at `https://dfg-sos.github.io/ontologies/eo-formats.owl` (namespace `https://dfg-sos.github.io/ontologies/eo-formats#`). Pass that URL as `ontology_schema_url`, and provide a mapping for its namespace to validate files against its formats.
+
+### Example ontology and mapping
+
+`tests/fixtures/ontologies/example-formats.ttl` is a small format ontology in the namespace `https://example.org/formats#` (`Raster` > `GeoTIFF` > `COG`, `Vector` > `Shapefile`, `GeoJSON`, …). `tests/fixtures/mappings/example-formats.json` maps its formats to the validator's. The tests and the examples in this README use them. Format identifiers can be given as short name (`Shapefile`) or full IRI (`https://example.org/formats#Shapefile`).
+
+To try the examples against a local service, copy the mapping into `mappings/` and use a `file://` URL for the ontology:
+
+```shell
+mkdir -p mappings && cp tests/fixtures/mappings/example-formats.json mappings/
+# "ontology_schema_url": "file:///<path to repo>/tests/fixtures/ontologies/example-formats.ttl"
+```
 
 ## Development
 
@@ -240,9 +258,7 @@ pytest --cov=sos_file_format_service --cov-report=term-missing
 
 ```
 sos-file-format-service/
-├── mappings/
-│   ├── eo-formats.json                   # Bundled mappings: EO formats ontology → validator formats
-│   └── custom/                           # Custom mappings (git-ignored, mount point in the image)
+├── mappings/                             # Format mappings (git-ignored, mount point in the image)
 ├── src/
 │   ├── main.py                           # Uvicorn entry point
 │   ├── config.py                         # Pydantic-settings configuration
@@ -258,8 +274,9 @@ sos-file-format-service/
 │   ├── unit/
 │   ├── integration/
 │   └── fixtures/
-├── ontology/
-│   └── eo-formats.owl                    # EO formats ontology
+│       ├── ontologies/                   # Example ontology (+ edge cases for unit tests)
+│       ├── mappings/                     # Example mapping for it
+│       └── data/                         # Sample files to validate
 ├── docker-compose.yml
 ├── Dockerfile
 ├── pyproject.toml                        # Project metadata, dependencies, tool config
@@ -291,22 +308,24 @@ SOS_FFS_SHARED_DIRS=/home/user/data:/data
 
 ### Format mappings
 
-Bundled mapping files live in `mappings/` (`/app/mappings` in the image). Additional ones go into `mappings/custom/` (`/app/mappings/custom`, git-ignored). They are loaded after the bundled ones, so they add new ontologies, and a file for an already bundled `ontology_uri` overrides it:
+A mapping file translates the format identifiers of one ontology (`ontology_uri`, its namespace) to the format identifiers of the validator. The service loads every `*.json` file in `mappings/` (`/app/mappings` in the image, git-ignored) at startup. No mappings are shipped: without any, validation rejects every format, and the service logs a warning at startup.
 
 ```json
 {
-  "ontology_uri": "https://example.org/my-formats#",
-  "mappings": { "Roads": "shapefile", "Elevation": "geotiff" }
+  "ontology_uri": "https://example.org/formats#",
+  "mappings": { "Shapefile": "shapefile", "GeoTIFF": "geotiff" }
 }
 ```
 
+See `tests/fixtures/mappings/example-formats.json` for a complete file.
+
 ### Container image
 
-The image is published to `ghcr.io/dfg-sos/file-format-service` (`linux/amd64`) as `latest` and, for Git tags `v1.2.3`, as `1.2.3` and `1.2`. Custom mappings, shared data and local ontologies are mounted at run time:
+The image is published to `ghcr.io/dfg-sos/file-format-service` (`linux/amd64`) as `latest` and, for Git tags `v1.2.3`, as `1.2.3` and `1.2`. Mappings, shared data and local ontologies are mounted at run time:
 
 ```shell
 docker run -p 8000:8000 \
-  -v /home/user/my-mappings:/app/mappings/custom:ro \
+  -v /home/user/my-mappings:/app/mappings:ro \
   -v /home/user/data:/data:ro \
   -e SOS_FFS_SHARED_DIRS=/home/user/data:/data \
   -v /home/user/ontology:/ontology:ro \
@@ -322,4 +341,4 @@ docker compose up -d
 ### Runtime Requirements
 
 - Any OWL/RDF ontology used by the `/compatibility` endpoint must be reachable via its `ontology_schema_url` (HTTP/HTTPS or local `file://` URIs).
-- The appropriate mapping files in `mappings/` must be present or mounted for ontology-format to validator-identifier translation to work.
+- A mapping file for each ontology namespace used with the validation endpoints must be present in, or mounted to, `mappings/`.

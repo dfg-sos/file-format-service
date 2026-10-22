@@ -4,8 +4,20 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
+from rdflib.util import guess_format
 
 from core import FormatOntology
+
+# Media types of the RDF serialisations, mapped to rdflib format names.
+_MEDIA_TYPE_FORMATS = {
+    "application/rdf+xml": "xml",
+    "application/xml": "xml",
+    "text/xml": "xml",
+    "text/turtle": "turtle",
+    "application/n-triples": "nt",
+    "text/n3": "n3",
+    "application/ld+json": "json-ld",
+}
 
 
 class OntologyRegistry:
@@ -17,7 +29,10 @@ class OntologyRegistry:
     async def resolve(self, schema_url: str) -> FormatOntology:
         """Fetch and parse an ontology, or return a cached instance.
 
-        Supports ``http://``, ``https://``, and ``file://`` URLs.
+        Supports ``http://``, ``https://``, and ``file://`` URLs and the RDF
+        serialisations RDF/XML, Turtle, N-Triples, N3 and JSON-LD. The format
+        is taken from the file extension for ``file://`` URLs, and from the
+        Content-Type, else the URL extension, for HTTP(S).
 
         Args:
             schema_url: URL pointing to the OWL/RDF ontology schema.
@@ -55,13 +70,10 @@ class OntologyRegistry:
         except httpx.HTTPError as exc:
             raise httpx.HTTPError(f"Could not fetch ontology from {schema_url}: {exc}") from exc
 
-        # Try to determine RDF format from Content-Type or URL extension.
-        content_type = response.headers.get("content-type", "")
-        format_hint: str | None = None
-        if "xml" in content_type or schema_url.endswith(".owl") or schema_url.endswith(".rdf"):
-            format_hint = "xml"
-        elif "turtle" in content_type or schema_url.endswith(".ttl"):
-            format_hint = "turtle"
+        # Determine the RDF format from the Content-Type, else from the URL
+        # extension. Without either, rdflib tries Turtle.
+        media_type = response.headers.get("content-type", "").partition(";")[0].strip().lower()
+        format_hint = _MEDIA_TYPE_FORMATS.get(media_type) or guess_format(parsed.path)
 
         try:
             ontology = FormatOntology.from_bytes(content, format=format_hint)
