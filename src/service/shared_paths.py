@@ -7,8 +7,16 @@ from pathlib import Path, PurePosixPath
 from config import SharedDir
 
 
+class PathNotAbsolute(ValueError):
+    """The client path is not absolute."""
+
+
 class PathNotShared(Exception):
     """The path is outside every shared directory, or cannot be accessed."""
+
+
+class SharedFileMissing(FileNotFoundError):
+    """The path is inside a shared directory but does not exist."""
 
 
 class SharedPathResolver:
@@ -39,14 +47,14 @@ class SharedPathResolver:
         formats keep the directory layout and file names the client sees.
 
         Raises:
-            ValueError: ``client_path`` is not absolute.
+            PathNotAbsolute: ``client_path`` is not absolute.
             PathNotShared: The path is outside every shared directory, escapes
                 one via a symlink, or cannot be accessed.
-            FileNotFoundError: The path is inside a shared directory but does
+            SharedFileMissing: The path is inside a shared directory but does
                 not exist.
         """
         if not PurePosixPath(client_path).is_absolute():
-            raise ValueError(f"Path must be absolute: '{client_path}'")
+            raise PathNotAbsolute(f"Path must be absolute: '{client_path}'")
 
         # Lexical normalisation collapses '..' before the containment check.
         normalised = PurePosixPath(posixpath.normpath(client_path))
@@ -60,7 +68,7 @@ class SharedPathResolver:
         try:
             resolved = mapped.resolve(strict=True)
         except FileNotFoundError:
-            raise FileNotFoundError(f"'{client_path}' does not exist") from None
+            raise SharedFileMissing(f"'{client_path}' does not exist") from None
         except OSError as exc:
             raise PathNotShared(f"'{client_path}' cannot be accessed: {exc.strerror}") from None
 

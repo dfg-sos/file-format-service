@@ -1,5 +1,6 @@
 """Fixtures for the integration tests."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -25,13 +26,18 @@ def create_test_app() -> FastAPI:
     return app
 
 
-def upload(client: TestClient, form: dict, primary: Path, secondary: list[Path] = []) -> Response:
-    """POST ``primary`` and ``secondary`` files with ``form`` to ``/validate``."""
+def upload(client: TestClient, mode: str, form: dict, primary: Path, secondary: list[Path] = []) -> Response:
+    """POST ``primary`` and ``secondary`` files with ``form`` to ``/validate/{mode}``.
+
+    An ``expected_metadata`` dict in ``form`` is sent as a JSON string field.
+    """
+    if isinstance(form.get("expected_metadata"), dict):
+        form = form | {"expected_metadata": json.dumps(form["expected_metadata"])}
     handles = [p.open("rb") for p in [primary, *secondary]]
     try:
         files = [("file", (primary.name, handles[0], "application/octet-stream"))]
         files += [("secondary_files", (p.name, h, "application/octet-stream")) for p, h in zip(secondary, handles[1:])]
-        return client.post("/api/v1/validate", files=files, data=form)
+        return client.post(f"/api/v1/validate/{mode}", files=files, data=form)
     finally:
         for h in handles:
             h.close()

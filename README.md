@@ -19,20 +19,28 @@ Swagger UI is served at `http://localhost:8000/docs`.
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Health check probe |
-| `POST` | `/api/v1/validate` | Validate an uploaded file against a format |
-| `POST` | `/api/v1/validate/local` | Validate a file on storage shared with the service, without uploading it |
+| `POST` | `/api/v1/validate/basic` | Check file names against a format; only the paths are sent |
+| `POST` | `/api/v1/validate/structural` | Check that uploaded files are structurally complete for a format |
+| `POST` | `/api/v1/validate/structural/local` | Same, for files on storage shared with the service, without uploading them |
+| `POST` | `/api/v1/validate/full` | Open uploaded files as the format and check their metadata |
+| `POST` | `/api/v1/validate/full/local` | Same, for files on storage shared with the service, without uploading them |
 | `POST` | `/api/v1/compatibility` | Check compatibility between two formats |
 | `POST` | `/api/v1/format-info` | Retrieve metadata of a format from an ontology |
 
 The examples use the [example ontology and mapping](#ontologies-and-mappings), with `https://example.org/formats.ttl` as a placeholder for the ontology's URL. Multi-file formats, local validation, metadata checks, responses and errors are described in the [API reference](docs/api.md).
 
 ```bash
-# Validate a file (modes: basic, structural, full)
-curl -X POST "http://localhost:8000/api/v1/validate" \
+# Check a file name, without sending the file
+curl -X POST "http://localhost:8000/api/v1/validate/basic" \
+  -H "Content-Type: application/json" \
+  -d '{"file_path": "/path/to/your/file.geojson", "ontology_namespace": "https://example.org/formats#", "format_identifier": "GeoJSON"}'
+
+# Upload and fully validate a file, including its CRS
+curl -X POST "http://localhost:8000/api/v1/validate/full" \
   -F "file=@/path/to/your/file.geojson" \
   -F "ontology_namespace=https://example.org/formats#" \
   -F "format_identifier=GeoJSON" \
-  -F "mode=full"
+  -F 'expected_metadata={"crs": "EPSG:4326"}'
 
 # Is a Shapefile usable where a Vector format is expected?
 curl -X POST "http://localhost:8000/api/v1/compatibility" \
@@ -50,18 +58,20 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
 The service is not tied to a particular ontology:
 
 - **`/compatibility` and `/format-info`** load the ontology from the `ontology_schema_url` of the request (HTTP(S) or `file://`) and cache it. Accepted serialisations are RDF/XML (`.owl`, `.rdf`), Turtle (`.ttl`), N-Triples (`.nt`), N3 (`.n3`) and JSON-LD (`.jsonld`), detected from the file extension, and over HTTP(S) first from the `Content-Type`.
-- **`/validate` and `/validate/local`** translate the `format_identifier` of the ontology given by `ontology_namespace` into a format of the validator. This requires a mapping file for that namespace.
+- **The `/validate/...` endpoints** translate the `format_identifier` of the ontology given by `ontology_namespace` into a format of the validator. This requires a mapping file for that namespace.
 
 A mapping file maps the format identifiers of one ontology to those of the validator:
 
 ```json
 {
   "ontology_uri": "https://example.org/formats#",
-  "mappings": { "Shapefile": "shapefile", "GeoTIFF": "geotiff" }
+  "mappings": { "Shapefile": "shapefile", "GeoTIFF": "geotiff", "Vector": "gisvector" }
 }
 ```
 
-The service loads every `*.json` file in `mappings/` (git-ignored; `/app/mappings` in the image) on the first validation request. No mappings are shipped: without any, validation rejects every format and the service logs a warning.
+The validator's identifiers are listed by `format_validator.supported_formats()` and matched case-insensitively. Abstract ones such as `gisvector` or `gisraster` accept a file that is valid for any of their concrete formats.
+
+The service loads every `*.json` file in `mappings/` (git-ignored; `/app/mappings` in the image) on the first validation request. No mappings are shipped: without any, validation rejects every format and the service logs a warning. Loading fails if a file maps to an identifier the validator does not know, or two files map the same format to different identifiers.
 
 The SOS vocabularies, including the EO file formats ontology, are maintained in [dfg-sos/ontologies](https://github.com/dfg-sos/ontologies) and published at `https://dfg-sos.github.io/ontologies/eo-formats.owl` (namespace `https://dfg-sos.github.io/ontologies/eo-formats#`).
 
@@ -77,7 +87,7 @@ Environment variables, prefixed with `SOS_FFS_`:
 |----------|---------|-------------|
 | `SOS_FFS_HOST` | `0.0.0.0` | Bind host |
 | `SOS_FFS_PORT` | `8000` | Bind port |
-| `SOS_FFS_SHARED_DIRS` | *(empty)* | Directories in which clients may reference files for `/validate/local`; empty disables the endpoint. Comma-separated absolute paths, `host_path` or `host_path:container_path` when the service sees the directory elsewhere (paths containing `:` or `,` are not supported). |
+| `SOS_FFS_SHARED_DIRS` | *(empty)* | Directories in which clients may reference files for `/validate/structural/local` and `/validate/full/local`; empty disables these endpoints. Comma-separated absolute paths, `host_path` or `host_path:container_path` when the service sees the directory elsewhere (paths containing `:` or `,` are not supported). |
 
 ```bash
 SOS_FFS_SHARED_DIRS=/home/user/data,/scratch      # service runs directly on the host
@@ -85,6 +95,10 @@ SOS_FFS_SHARED_DIRS=/home/user/data:/data         # container with /home/user/da
 ```
 
 Clients always send host paths; the service maps them to the container path.
+
+### Concurrency
+
+Validation runs in a thread pool, so a long validation does not hold up other requests. For CPU-heavy full validation, set `WEB_CONCURRENCY` to run several worker processes (each keeps its own caches of mappings and ontologies). The service keeps no state between requests, so it can also run as several replicas behind a load balancer.
 
 ### Container image
 
@@ -110,4 +124,4 @@ uv run pytest --cov=src            # with coverage
 uv run ruff check src tests
 ```
 
-The code in `src/` is layered: `api/` (FastAPI routers, schemas, dependency wiring), `service/` (compatibility checks, ontology fetching and caching), `adapter/` (bridge to `format_validator`) and `core/` (ontology parsing and reasoning with `rdflib`).
+The code in `src/` is layered: `api/` (FastAPI routers, schemas, dependency wiring), `service/` (compatibility checks, ontology fetching and caching) and `core/` (ontology parsing and reasoning with `rdflib`).

@@ -3,13 +3,12 @@
   "ontology_uri": "https://example.org/formats#",
   "description": "Mapping from the example format ontology (tests/fixtures/ontologies/example-formats.ttl) to validator format identifiers",
   "mappings": {
-    "Raster": "raster",
+    "Raster": "gisraster",
     "GeoTIFF": "geotiff",
     "COG": "cog",
-    "Vector": "vector",
+    "Vector": "gisvector",
     "Shapefile": "shapefile",
     "GeoJSON": "geojson",
-    "EsriJSON": "esrijson",
     "GeoPackage": "geopackage"
   }
 }
