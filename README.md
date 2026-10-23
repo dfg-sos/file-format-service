@@ -65,11 +65,13 @@ A mapping file maps the format identifiers of one ontology to those of the valid
 ```json
 {
   "ontology_uri": "https://example.org/formats#",
-  "mappings": { "Shapefile": "shapefile", "GeoTIFF": "geotiff" }
+  "mappings": { "Shapefile": "shapefile", "GeoTIFF": "geotiff", "Vector": "gisvector" }
 }
 ```
 
-The service loads every `*.json` file in `mappings/` (git-ignored; `/app/mappings` in the image) on the first validation request. No mappings are shipped: without any, validation rejects every format and the service logs a warning.
+The validator's identifiers are listed by `format_validator.supported_formats()` and matched case-insensitively. Abstract ones such as `gisvector` or `gisraster` accept a file that is valid for any of their concrete formats.
+
+The service loads every `*.json` file in `mappings/` (git-ignored; `/app/mappings` in the image) on the first validation request. No mappings are shipped: without any, validation rejects every format and the service logs a warning. Loading fails if a file maps to an identifier the validator does not know, or two files map the same format to different identifiers.
 
 The SOS vocabularies, including the EO file formats ontology, are maintained in [dfg-sos/ontologies](https://github.com/dfg-sos/ontologies) and published at `https://dfg-sos.github.io/ontologies/eo-formats.owl` (namespace `https://dfg-sos.github.io/ontologies/eo-formats#`).
 
@@ -122,4 +124,4 @@ uv run pytest --cov=src            # with coverage
 uv run ruff check src tests
 ```
 
-The code in `src/` is layered: `api/` (FastAPI routers, schemas, dependency wiring), `service/` (compatibility checks, ontology fetching and caching), `adapter/` (bridge to `format_validator`) and `core/` (ontology parsing and reasoning with `rdflib`).
+The code in `src/` is layered: `api/` (FastAPI routers, schemas, dependency wiring), `service/` (compatibility checks, ontology fetching and caching) and `core/` (ontology parsing and reasoning with `rdflib`).
