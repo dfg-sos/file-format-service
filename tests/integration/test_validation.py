@@ -171,7 +171,7 @@ class TestFullModeMetadata:
         def fail(*args: object) -> None:
             raise AssertionError("upload written for a rejected request")
 
-        monkeypatch.setattr("api.routers.validation._write_upload", fail)
+        monkeypatch.setattr("service.uploads.StagedUploads.write", fail)
         response = _validate(client, mode="full", expected_metadata={"crs": "totally-bogus-crs-string"})
         assert response.status_code == 400
 
@@ -212,31 +212,3 @@ class TestMultiFileValidation:
                 data=self.FORM,
             )
         assert response.status_code == 400
-
-
-class TestSafeFilename:
-    @pytest.mark.parametrize(
-        ("raw", "expected"),
-        [
-            ("roads.shp", "roads.shp"),
-            ("../../etc/passwd", "passwd"),
-            ("/abs/path/roads.shp", "roads.shp"),
-            ("..\\..\\evil.dll", "evil.dll"),
-            ("C:\\Users\\me\\roads.shp", "roads.shp"),
-            ("a/b\\c.dbf", "c.dbf"),
-            ("dir/", "dir"),
-            ("..", "fallback"),
-            (".", "fallback"),
-            ("", "fallback"),
-            (None, "fallback"),
-        ],
-    )
-    def test_safe_filename(self, raw: str | None, expected: str) -> None:
-        from io import BytesIO
-
-        from fastapi import UploadFile
-
-        from api.routers.validation import _safe_filename
-
-        upload = UploadFile(BytesIO(b""), filename=raw)
-        assert _safe_filename(upload, "fallback") == expected

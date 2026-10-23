@@ -2,6 +2,7 @@
 
 from typing import Literal
 
+from format_validator import ValidationResult
 from pydantic import BaseModel, Field
 
 
@@ -72,3 +73,14 @@ class FileFormatValidationResponse(BaseModel):
     errors: list[FileFormatValidationEvent]
     warnings: list[FileFormatValidationEvent]
     infos: list[FileFormatValidationEvent]
+
+    @classmethod
+    def from_result(cls, validation_result: ValidationResult) -> FileFormatValidationResponse:
+        """Convert the validator's ``ValidationResult``."""
+        data = validation_result.to_dict()
+        return cls(
+            status=data["status"].upper(),
+            errors=[FileFormatValidationEvent(**e) for e in data["errors"]],
+            warnings=[FileFormatValidationEvent(**e) for e in data["warnings"]],
+            infos=[FileFormatValidationEvent(**e) for e in data["infos"]],
+        )
