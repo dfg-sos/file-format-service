@@ -27,8 +27,7 @@ class FullValidationRequest(FileFormatValidationRequest):
             "Expected metadata of the file, as key/value pairs. The supported keys "
             "depend on the validator of the format (e.g. 'crs' and 'geometry_type' "
             "for vector formats); other keys are rejected. A key that is omitted or "
-            "empty skips that check, a value that cannot be parsed makes the result "
-            "UNCERTAIN."
+            "empty skips that check; values that cannot be parsed are rejected."
         ),
     )
 

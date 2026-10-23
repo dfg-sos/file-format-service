@@ -436,10 +436,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/51/e0/71b63839cc609e1d6
 
 [[package]]
 name = "format-validator"
-version = "1.0.0"
-source = { git = "https://github.com/dfg-sos/file-format-validator.git?rev=main#fcbabfa2092fe5127bbd849b449e0304b2db7698" }
+version = "0.2.1"
+source = { git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.2.1#836bc7e00ac00a42893e29924115e776d332fa9d" }
 dependencies = [
     { name = "cfgrib" },
+    { name = "eccodeslib" },
     { name = "fiona" },
     { name = "geopandas" },
     { name = "netcdf4" },
@@ -449,7 +450,6 @@ dependencies = [
     { name = "rasterio" },
     { name = "rio-cogeo" },
     { name = "shapely" },
-    { name = "tifffile" },
     { name = "xarray" },
 ]
 
@@ -1261,7 +1261,7 @@ dev = [
 requires-dist = [
     { name = "aiofiles" },
     { name = "fastapi" },
-    { name = "format-validator", git = "https://github.com/dfg-sos/file-format-validator.git?rev=main" },
+    { name = "format-validator", git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.2.1" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pydantic" },
@@ -1286,18 +1286,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b5/b4/205b0d5241d934e8add0c38aa924c4f9fb7330834ff11e5444db964ec3f9/starlette-1.6.0.tar.gz", hash = "sha256:d4e3ac5e546444960c710297a3c9fc3f7ebae1b7e963f3d36173b49da535be9b", size = 2716969, upload-time = "2026-08-08T18:27:57.512Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c8/cb/6a6a47d5b464bd08695d254f3da6e7986cc70c9fa5d778eda57538edfe56/starlette-1.6.0-py3-none-any.whl", hash = "sha256:a86dd39d14bb45f85a3d18525215a9ef0cfd1f192ac793220e72598c90335f0c", size = 75969, upload-time = "2026-08-08T18:27:56.196Z" },
-]
-
-[[package]]
-name = "tifffile"
-version = "2026.8.23"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/07/90078f49e60718d414d5440dc498301f11ff049458e65cf8d27c62a5c9d1/tifffile-2026.8.23.tar.gz", hash = "sha256:bd3c816f166f85c93329a54a0c9a1eccc9968a6a78f91d63b65d7b17675915f2", size = 446179, upload-time = "2026-08-23T18:45:05.976Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/38/05347ae8b1b268c068b3ca38822558038f38c6494604837d7ca3cbcceb9c/tifffile-2026.8.23-py3-none-any.whl", hash = "sha256:a03045afce67d97cb4ef56a1cd47eae6ab8115c7e84cfedeb5cadbfbb6d14fbe", size = 273795, upload-time = "2026-08-23T18:45:04.466Z" },
 ]
 
 [[package]]

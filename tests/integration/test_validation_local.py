@@ -53,7 +53,6 @@ class TestSameResultAsUpload:
             ("full", "sample.geojson", {"crs": "EPSG:3857"}),
             ("full", "sample_point.geojson", {"geometry_type": "Point"}),
             ("full", "sample_point.geojson", {"geometry_type": "Polygon"}),
-            ("full", "sample_point.geojson", {"geometry_type": "NotAGeometry"}),
         ],
     )
     def test_geojson(self, local_client: TestClient, mode: str, fixture: str, metadata: dict) -> None:
@@ -130,10 +129,24 @@ class TestRequestErrorsLikeUpload:
         response = _local(local_client, "structural", form, DATA / "sample.geojson")
         assert response.status_code == 400
 
-    def test_unsupported_metadata_key(self, local_client: TestClient) -> None:
-        form = {**GEOJSON_FORM, "expected_metadata": {"encoding": "utf-8"}}
-        response = _local(local_client, "full", form, DATA / "sample.geojson")
+    def test_request_checked_before_paths(self, local_client: TestClient) -> None:
+        """A request that cannot be validated is rejected before its paths are looked at."""
+        form = {**GEOJSON_FORM, "format_identifier": "format_99999"}
+        response = _local(local_client, "structural", form, "/etc/passwd")
         assert response.status_code == 400
+
+    @pytest.mark.parametrize(
+        ("metadata", "status_code"),
+        [
+            pytest.param({"encoding": "utf-8"}, 400, id="unsupported-key"),
+            pytest.param({"crs": "totally-bogus-crs-string"}, 400, id="invalid-value"),
+            pytest.param({"crs": 4326}, 422, id="non-string-value"),
+        ],
+    )
+    def test_invalid_metadata(self, local_client: TestClient, metadata: dict, status_code: int) -> None:
+        form = {**GEOJSON_FORM, "expected_metadata": metadata}
+        response = _local(local_client, "full", form, DATA / "sample.geojson")
+        assert response.status_code == status_code
 
 
 class TestServerTiming:

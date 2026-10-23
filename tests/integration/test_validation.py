@@ -37,6 +37,7 @@ class TestRequestErrors:
         ("fields", "status_code"),
         [
             pytest.param({"format_identifier": "format_9999"}, 400, id="unmapped-format"),
+            pytest.param({"ontology_namespace": "http://unknown-ontology.org#"}, 400, id="unmapped-namespace"),
             pytest.param({"ontology_namespace": None}, 422, id="missing-namespace"),
             pytest.param({"format_identifier": None}, 422, id="missing-format"),
         ],
@@ -58,22 +59,16 @@ class TestOutcome:
         assert response.json()["status"] == "FAILURE"
         assert _messages(response, "errors") != []
 
-    def test_format_without_validator_is_uncertain(self, client: TestClient) -> None:
-        """EsriJSON is mapped, but the validator has no implementation for it."""
-        response = _validate(client, format_identifier="EsriJSON")
-        assert response.json()["status"] == "UNCERTAIN"
-        assert "not supported" in _messages(response, "warnings")[0]
+    def test_abstract_format(self, client: TestClient) -> None:
+        """Vector maps to an abstract format, validated against its concrete formats."""
+        response = _validate(client, format_identifier="Vector")
+        assert response.json()["status"] == "SUCCESS"
+        assert any("valid as 'GeoJSON'" in m for m in _messages(response, "infos"))
 
     @pytest.mark.parametrize("mode", ["structural", "full"])
     def test_modes(self, client: TestClient, mode: str) -> None:
         """Both upload modes succeed for a valid file."""
         assert _validate(client, mode=mode).json()["status"] == "SUCCESS"
-
-    def test_unknown_namespace_falls_back_to_all_mappings(self, client: TestClient) -> None:
-        """Pins the FormatTranslator fallback: a format known under another
-        ontology still resolves instead of yielding 400. Not an endorsement."""
-        response = _validate(client, ontology_namespace="http://unknown-ontology.org")
-        assert response.json()["status"] == "SUCCESS"
 
     def test_filename_without_extension_fails(self, client: TestClient, tmp_path: Path) -> None:
         """The upload is stored without a suffix, which fails the extension check.
@@ -142,11 +137,9 @@ class TestFullModeMetadata:
             pytest.param(SAMPLE_POINT, {"expected_metadata": {"geometry_type": "NotAGeometry"}}, id="geometry"),
         ],
     )
-    def test_unparseable_value_is_uncertain(self, client: TestClient, path: Path, fields: dict) -> None:
-        """The request cannot be built: reported as UNCERTAIN, not a crash, 400 or skipped check."""
+    def test_unparseable_value_rejected(self, client: TestClient, path: Path, fields: dict) -> None:
         response = _validate(client, path, mode="full", **fields)
-        assert response.json()["status"] == "UNCERTAIN"
-        assert any("ValidationRequest could not be built" in m for m in _messages(response, "warnings"))
+        assert response.status_code == 400
 
     @pytest.mark.parametrize(
         ("format_identifier", "metadata"),
@@ -154,14 +147,14 @@ class TestFullModeMetadata:
             pytest.param("GeoJSON", {"encoding": "utf-8"}, id="unknown-key"),
             # Raster validators take no geometry type.
             pytest.param("GeoTIFF", {"geometry_type": "Point"}, id="key-of-other-validator"),
-            # The format has no validator, so no metadata can be checked.
-            pytest.param("EsriJSON", {"crs": "EPSG:4326"}, id="format-without-validator"),
+            # Raster leaves take no geometry type, so neither does the abstract format.
+            pytest.param("Raster", {"geometry_type": "Point"}, id="abstract-format"),
         ],
     )
     def test_unsupported_key_rejected(self, client: TestClient, format_identifier: str, metadata: dict) -> None:
         response = _validate(client, mode="full", format_identifier=format_identifier, expected_metadata=metadata)
         assert response.status_code == 400
-        assert "Unsupported expected_metadata key" in response.json()["detail"]
+        assert "Unsupported metadata keys" in response.json()["detail"]
 
     @pytest.mark.parametrize(
         "raw",
@@ -173,6 +166,14 @@ class TestFullModeMetadata:
     )
     def test_invalid_metadata_field(self, client: TestClient, raw: str) -> None:
         assert _validate(client, mode="full", expected_metadata=raw).status_code == 422
+
+    def test_rejected_request_writes_no_upload(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+        def fail(*args: object) -> None:
+            raise AssertionError("upload written for a rejected request")
+
+        monkeypatch.setattr("api.routers.validation._write_upload", fail)
+        response = _validate(client, mode="full", expected_metadata={"crs": "totally-bogus-crs-string"})
+        assert response.status_code == 400
 
     def test_structural_ignores_metadata_field(self, client: TestClient) -> None:
         """Metadata belongs to full validation only; the structural form has no such field."""

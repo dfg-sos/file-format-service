@@ -16,7 +16,7 @@ There is one endpoint per validation mode. The deeper the mode, the more of the 
 | `POST /api/v1/validate/structural` | Additionally, that the files exist | The files: uploaded, or on shared storage via `/validate/structural/local` |
 | `POST /api/v1/validate/full` | Additionally, that the files open as the format, and their [metadata](#metadata-checks-in-full-mode) | The files: uploaded, or on shared storage via `/validate/full/local` |
 
-Each response holds a `status` (`SUCCESS`, `FAILURE` or `UNCERTAIN`) and the `errors`, `warnings` and `infos` of the validation. A format that is mapped but has no validator yields `UNCERTAIN`.
+Each response holds a `status` (`SUCCESS`, `FAILURE` or `UNCERTAIN`) and the `errors`, `warnings` and `infos` of the validation. A format that is not mapped, or has no validator, yields `400`.
 
 ## `POST /api/v1/validate/basic`
 
@@ -73,8 +73,8 @@ The full endpoints take an optional `expected_metadata`: key/value pairs the fil
 | Raster formats (e.g. GeoTIFF, COG) | `crs` |
 
 - A key that is omitted (or empty) skips that check.
-- A key the format's validator does not support yields `400`. This includes every key for formats without a validator.
-- A value that cannot be parsed (an unknown CRS or geometry type) yields an `UNCERTAIN` result.
+- A key the format's validator does not support yields `400`. For an abstract format such as `GISVector`, only the keys all its concrete formats support are accepted.
+- A value that cannot be parsed (an unknown CRS or geometry type) yields `400`.
 - `expected_metadata` that is not a JSON object of strings yields `422`.
 
 ## `POST /api/v1/validate/structural/local` and `/validate/full/local`
@@ -102,11 +102,11 @@ The body takes the same fields as the upload, with `file_path` and `secondary_fi
 | Status | When |
 |--------|------|
 | `200` | Validation ran; `status` holds the outcome |
-| `400` | A path is not absolute, the format is not supported, or `expected_metadata` has unsupported keys |
+| `400` | The format is not supported, `expected_metadata` has unsupported keys or values that cannot be parsed, or a path is not absolute |
 | `403` | Local validation is disabled, or a path is outside the shared directories (including via `..` or symlinks) |
 | `404` | A path inside a shared directory does not exist |
 
-Clients should fall back to the upload endpoint of the same mode on a `403`, e.g. for files outside the shared directories.
+The request is checked before the paths, so a `400` comes before any `403` or `404`. Clients should fall back to the upload endpoint of the same mode on a `403`, e.g. for files outside the shared directories.
 
 ## Server-Timing header
 
