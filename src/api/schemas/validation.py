@@ -6,10 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class FileFormatValidationRequest(BaseModel):
-    """Request body for the file validation endpoint.
-
-    These fields are sent as multipart form data alongside the uploaded file.
-    """
+    """Fields common to all validation endpoints."""
 
     ontology_namespace: str = Field(
         ...,
@@ -19,48 +16,41 @@ class FileFormatValidationRequest(BaseModel):
         ...,
         description="Format identifier in the given ontology (e.g. format_4119).",
     )
-    mode: str = Field(
-        default="basic",
-        description="Validation mode: basic, structural, or full.",
-    )
-    expected_crs: str | None = Field(
-        default=None,
+
+
+class FullValidationRequest(FileFormatValidationRequest):
+    """Request for full validation, which also checks the file's metadata."""
+
+    expected_metadata: dict[str, str] = Field(
+        default_factory=dict,
         description=(
-            "Expected coordinate reference system for FULL-mode metadata "
-            "validation, in any form accepted by pyproj (e.g. 'EPSG:4326', a "
-            "WKT string, or a proj4 string). Only checked in FULL mode."
-        ),
-    )
-    expected_geometry_type: str | None = Field(
-        default=None,
-        description=(
-            "Expected GeoJSON-style geometry type for FULL-mode metadata "
-            "validation (e.g. 'Point', 'MultiPolygon'), matched "
-            "case-insensitively. Only applies to vector formats and only "
-            "checked in FULL mode. Unrecognized names make the result "
+            "Expected metadata of the file, as key/value pairs. The supported keys "
+            "depend on the validator of the format (e.g. 'crs' and 'geometry_type' "
+            "for vector formats); other keys are rejected. A key that is omitted or "
+            "empty skips that check, a value that cannot be parsed makes the result "
             "UNCERTAIN."
         ),
     )
 
 
-class LocalValidationRequest(FileFormatValidationRequest):
-    """JSON body for validating a file on storage shared with the service.
-
-    Paths are given as the client sees them and must lie inside one of the
-    directories configured in ``SOS_FFS_SHARED_DIRS``.
-    """
+class PathValidationRequest(FileFormatValidationRequest):
+    """JSON body that references the file by path instead of uploading it."""
 
     file_path: str = Field(
         ...,
-        description="Absolute path of the file to validate. For multi-file formats, the primary file (e.g. the .shp).",
+        description="Path of the file to validate. For multi-file formats, the primary file (e.g. the .shp).",
     )
     secondary_file_paths: list[str] = Field(
         default_factory=list,
         description=(
-            "Absolute paths of the remaining files of a multi-file format (e.g. .shx, .dbf, .prj). "
+            "Paths of the remaining files of a multi-file format (e.g. .shx, .dbf, .prj). "
             "They must be in the same directory as file_path."
         ),
     )
+
+
+class FullPathValidationRequest(PathValidationRequest, FullValidationRequest):
+    """JSON body for full validation of a file on shared storage."""
 
 
 class FileFormatValidationEvent(BaseModel):

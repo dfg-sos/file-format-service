@@ -1,4 +1,4 @@
-"""Integration tests for the ``/validate/local`` endpoint."""
+"""Integration tests for the ``/validate/{mode}/local`` endpoints."""
 
 import re
 from pathlib import Path, PurePosixPath
@@ -27,9 +27,9 @@ def local_client(tmp_path: Path) -> TestClient:
     return _client_with_shared_dirs(DATA, tmp_path)
 
 
-def _local(client: TestClient, form: dict, primary: Path | str, secondary: list[Path] = []):
+def _local(client: TestClient, mode: str, form: dict, primary: Path | str, secondary: list[Path] = []):
     body = {**form, "file_path": str(primary), "secondary_file_paths": [str(p) for p in secondary]}
-    return client.post("/api/v1/validate/local", json=body)
+    return client.post(f"/api/v1/validate/{mode}/local", json=body)
 
 
 def _outcome(response) -> tuple:
@@ -45,23 +45,22 @@ def _outcome(response) -> tuple:
 
 class TestSameResultAsUpload:
     @pytest.mark.parametrize(
-        ("fixture", "extra"),
+        ("mode", "fixture", "metadata"),
         [
-            ("sample.geojson", {"mode": "basic"}),
-            ("sample.geojson", {"mode": "structural"}),
-            ("sample.geojson", {"mode": "full"}),
-            ("sample.geojson", {"mode": "full", "expected_crs": "EPSG:4326"}),
-            ("sample.geojson", {"mode": "full", "expected_crs": "EPSG:3857"}),
-            ("sample_point.geojson", {"mode": "full", "expected_geometry_type": "Point"}),
-            ("sample_point.geojson", {"mode": "full", "expected_geometry_type": "Polygon"}),
-            ("sample_point.geojson", {"mode": "full", "expected_geometry_type": "NotAGeometry"}),
+            ("structural", "sample.geojson", {}),
+            ("full", "sample.geojson", {}),
+            ("full", "sample.geojson", {"crs": "EPSG:4326"}),
+            ("full", "sample.geojson", {"crs": "EPSG:3857"}),
+            ("full", "sample_point.geojson", {"geometry_type": "Point"}),
+            ("full", "sample_point.geojson", {"geometry_type": "Polygon"}),
+            ("full", "sample_point.geojson", {"geometry_type": "NotAGeometry"}),
         ],
     )
-    def test_geojson(self, local_client: TestClient, fixture: str, extra: dict) -> None:
-        form = {**GEOJSON_FORM, **extra}
+    def test_geojson(self, local_client: TestClient, mode: str, fixture: str, metadata: dict) -> None:
+        form = {**GEOJSON_FORM, "expected_metadata": metadata} if mode == "full" else GEOJSON_FORM
         path = DATA / fixture
-        uploaded = upload(local_client, form, path)
-        local = _local(local_client, form, path)
+        uploaded = upload(local_client, mode, form, path)
+        local = _local(local_client, mode, form, path)
         assert uploaded.status_code == local.status_code == 200
         assert _outcome(local) == _outcome(uploaded)
 
@@ -72,33 +71,32 @@ class TestSameResultAsUpload:
     def test_shapefile(
         self, local_client: TestClient, sample_shapefile: Path, extensions: list[str], expected_status: str
     ) -> None:
-        form = {**SHAPEFILE_FORM, "mode": "structural"}
         secondary = [sample_shapefile.with_suffix(ext) for ext in extensions]
-        uploaded = upload(local_client, form, sample_shapefile, secondary)
-        local = _local(local_client, form, sample_shapefile, secondary)
+        uploaded = upload(local_client, "structural", SHAPEFILE_FORM, sample_shapefile, secondary)
+        local = _local(local_client, "structural", SHAPEFILE_FORM, sample_shapefile, secondary)
         assert uploaded.status_code == local.status_code == 200
         assert _outcome(local) == _outcome(uploaded)
         assert local.json()["status"] == expected_status
 
     def test_files_are_not_deleted(self, local_client: TestClient, sample_shapefile: Path) -> None:
         secondary = [sample_shapefile.with_suffix(ext) for ext in (".shx", ".dbf", ".prj")]
-        _local(local_client, {**SHAPEFILE_FORM, "mode": "structural"}, sample_shapefile, secondary)
+        _local(local_client, "full", SHAPEFILE_FORM, sample_shapefile, secondary)
         assert all(p.exists() for p in [sample_shapefile, *secondary])
 
 
 class TestAccessControl:
     def test_disabled_without_shared_dirs(self) -> None:
         client = _client_with_shared_dirs()
-        response = _local(client, GEOJSON_FORM, DATA / "sample.geojson")
+        response = _local(client, "structural", GEOJSON_FORM, DATA / "sample.geojson")
         assert response.status_code == 403
         assert "disabled" in response.json()["detail"]
 
     def test_outside_shared_dirs(self, local_client: TestClient) -> None:
-        response = _local(local_client, GEOJSON_FORM, "/etc/passwd")
+        response = _local(local_client, "structural", GEOJSON_FORM, "/etc/passwd")
         assert response.status_code == 403
 
     def test_dotdot_escape(self, local_client: TestClient) -> None:
-        response = _local(local_client, GEOJSON_FORM, f"{DATA}/../../../pyproject.toml")
+        response = _local(local_client, "structural", GEOJSON_FORM, f"{DATA}/../../../pyproject.toml")
         assert response.status_code == 403
 
     def test_symlink_escape(self, tmp_path: Path) -> None:
@@ -106,35 +104,35 @@ class TestAccessControl:
         shared.mkdir()
         (shared / "sample.geojson").symlink_to(DATA / "sample.geojson")
         client = _client_with_shared_dirs(shared)
-        response = _local(client, GEOJSON_FORM, shared / "sample.geojson")
+        response = _local(client, "structural", GEOJSON_FORM, shared / "sample.geojson")
         assert response.status_code == 403
 
     def test_secondary_file_outside_shared_dirs(self, local_client: TestClient, sample_shapefile: Path) -> None:
-        response = _local(local_client, SHAPEFILE_FORM, sample_shapefile, [Path("/etc/passwd")])
+        response = _local(local_client, "structural", SHAPEFILE_FORM, sample_shapefile, [Path("/etc/passwd")])
         assert response.status_code == 403
 
     def test_missing_file(self, local_client: TestClient) -> None:
-        response = _local(local_client, GEOJSON_FORM, DATA / "missing.geojson")
+        response = _local(local_client, "structural", GEOJSON_FORM, DATA / "missing.geojson")
         assert response.status_code == 404
 
     def test_relative_path(self, local_client: TestClient) -> None:
-        response = _local(local_client, GEOJSON_FORM, "sample.geojson")
+        response = _local(local_client, "structural", GEOJSON_FORM, "sample.geojson")
         assert response.status_code == 400
 
     def test_missing_file_path(self, local_client: TestClient) -> None:
-        response = local_client.post("/api/v1/validate/local", json=GEOJSON_FORM)
+        response = local_client.post("/api/v1/validate/structural/local", json=GEOJSON_FORM)
         assert response.status_code == 422
 
 
 class TestRequestErrorsLikeUpload:
     def test_unknown_format(self, local_client: TestClient) -> None:
         form = {**GEOJSON_FORM, "format_identifier": "format_99999"}
-        response = _local(local_client, form, DATA / "sample.geojson")
+        response = _local(local_client, "structural", form, DATA / "sample.geojson")
         assert response.status_code == 400
 
-    def test_invalid_mode(self, local_client: TestClient) -> None:
-        form = {**GEOJSON_FORM, "mode": "thorough"}
-        response = _local(local_client, form, DATA / "sample.geojson")
+    def test_unsupported_metadata_key(self, local_client: TestClient) -> None:
+        form = {**GEOJSON_FORM, "expected_metadata": {"encoding": "utf-8"}}
+        response = _local(local_client, "full", form, DATA / "sample.geojson")
         assert response.status_code == 400
 
 
@@ -142,11 +140,11 @@ class TestServerTiming:
     _ENTRY = r"{name};dur=\d+\.\d"
 
     def test_upload(self, local_client: TestClient) -> None:
-        response = upload(local_client, GEOJSON_FORM, DATA / "sample.geojson")
+        response = upload(local_client, "structural", GEOJSON_FORM, DATA / "sample.geojson")
         expected = ", ".join(self._ENTRY.format(name=n) for n in ("receive", "validate"))
         assert re.fullmatch(expected, response.headers["server-timing"])
 
     def test_local(self, local_client: TestClient) -> None:
-        response = _local(local_client, GEOJSON_FORM, DATA / "sample.geojson")
+        response = _local(local_client, "structural", GEOJSON_FORM, DATA / "sample.geojson")
         expected = ", ".join(self._ENTRY.format(name=n) for n in ("resolve", "validate"))
         assert re.fullmatch(expected, response.headers["server-timing"])

@@ -6,50 +6,83 @@ The examples use the example ontology and mapping from `tests/fixtures/` (namesp
 
 > **`ontology_namespace` vs `ontology_schema_url`:** the validation endpoints take the ontology's namespace (base URI), used to look up the [format mapping](../README.md#ontologies-and-mappings). The ontology endpoints take the URL of the OWL/RDF file itself.
 
-## `POST /api/v1/validate`
+## Validation endpoints
 
-Upload a file and validate it against a format. Modes: `basic`, `structural`, `full` (case-insensitive).
+There is one endpoint per validation mode. The deeper the mode, the more of the file the service needs:
+
+| Endpoint | Checks | The service needs |
+|----------|--------|-------------------|
+| `POST /api/v1/validate/basic` | File extensions; for multi-file formats, the components present and in one directory | Only the paths |
+| `POST /api/v1/validate/structural` | Additionally, that the files exist | The files: uploaded, or on shared storage via `/validate/structural/local` |
+| `POST /api/v1/validate/full` | Additionally, that the files open as the format, and their [metadata](#metadata-checks-in-full-mode) | The files: uploaded, or on shared storage via `/validate/full/local` |
+
+Each response holds a `status` (`SUCCESS`, `FAILURE` or `UNCERTAIN`) and the `errors`, `warnings` and `infos` of the validation. A format that is mapped but has no validator yields `UNCERTAIN`.
+
+## `POST /api/v1/validate/basic`
+
+Checks only the file names, so the client sends paths in a JSON body instead of the files. The service neither transfers nor reads the files. They need not be accessible to it, and no [shared directories](../README.md#configuration) are required.
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/validate" \
+curl -X POST "http://localhost:8000/api/v1/validate/basic" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "/home/user/data/run42/roads.shp",
+    "secondary_file_paths": [
+      "/home/user/data/run42/roads.shx",
+      "/home/user/data/run42/roads.dbf",
+      "/home/user/data/run42/roads.prj"
+    ],
+    "ontology_namespace": "https://example.org/formats#",
+    "format_identifier": "Shapefile"
+  }'
+```
+
+## `POST /api/v1/validate/structural` and `/validate/full`
+
+Upload a file and validate it against a format:
+
+```bash
+curl -X POST "http://localhost:8000/api/v1/validate/full" \
   -F "file=@/path/to/your/file.geojson" \
   -F "ontology_namespace=https://example.org/formats#" \
   -F "format_identifier=GeoJSON" \
-  -F "mode=full"
+  -F 'expected_metadata={"crs": "EPSG:4326"}'
 ```
-
-The response holds a `status` (`SUCCESS`, `FAILURE` or `UNCERTAIN`) and the `errors`, `warnings` and `infos` of the validation. A format that is mapped but has no validator yields `UNCERTAIN`.
 
 ### Multi-file formats (e.g. Shapefile)
 
 Upload the primary file as `file` and every remaining component as a repeated `secondary_files` part. Original file names must be preserved (components are matched by stem); names must be unique within a request.
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/validate" \
+curl -X POST "http://localhost:8000/api/v1/validate/structural" \
   -F "file=@/path/to/roads.shp" \
   -F "secondary_files=@/path/to/roads.shx" \
   -F "secondary_files=@/path/to/roads.dbf" \
   -F "secondary_files=@/path/to/roads.prj" \
   -F "ontology_namespace=https://example.org/formats#" \
-  -F "format_identifier=Shapefile" \
-  -F "mode=structural"
+  -F "format_identifier=Shapefile"
 ```
 
 ### Metadata checks in `full` mode
 
-In `full` mode, optional fields validate a file's metadata against an expected value:
+The full endpoints take an optional `expected_metadata`: key/value pairs the file's metadata must match. In the upload it is a form field holding a JSON object; in the JSON body of `/validate/full/local` it is an object. The keys are not fixed by the service: the validator of the format decides which ones it supports. Currently:
 
-- `expected_crs`: any coordinate reference system string understood by `pyproj`, e.g. `EPSG:4326`.
-- `expected_geometry_type`: a GeoJSON-style geometry type such as `Point` or `MultiPolygon`, matched case-insensitively; only applies to vector formats.
+| Formats | Keys |
+|---------|------|
+| Vector formats (e.g. GeoJSON, Shapefile, GeoPackage) | `crs`: any coordinate reference system string understood by `pyproj`, e.g. `EPSG:4326`<br>`geometry_type`: a GeoJSON-style geometry type such as `Point` or `MultiPolygon`, matched case-insensitively |
+| Raster formats (e.g. GeoTIFF, COG) | `crs` |
 
-Omitting a field (or sending it empty) skips that check. A value that cannot be parsed (an unknown CRS or geometry type) yields an `UNCERTAIN` result.
+- A key that is omitted (or empty) skips that check.
+- A key the format's validator does not support yields `400`. This includes every key for formats without a validator.
+- A value that cannot be parsed (an unknown CRS or geometry type) yields an `UNCERTAIN` result.
+- `expected_metadata` that is not a JSON object of strings yields `422`.
 
-## `POST /api/v1/validate/local`
+## `POST /api/v1/validate/structural/local` and `/validate/full/local`
 
-When client and service run on the same host (or share a mounted volume), the client can send the file's path instead of uploading it. The service reads the file in place: nothing is transferred, copied or deleted. The result is the same as for `/validate`. This is the intended mode for the format-aware CWL runner.
+When client and service run on the same host (or share a mounted volume), the client can send the file's path instead of uploading it. The service reads the file in place: nothing is transferred, copied or deleted. The result is the same as for the upload endpoint of the same mode. This is the intended mode for the format-aware CWL runner.
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/validate/local" \
+curl -X POST "http://localhost:8000/api/v1/validate/full/local" \
   -H "Content-Type: application/json" \
   -d '{
     "file_path": "/home/user/data/run42/roads.shp",
@@ -60,29 +93,29 @@ curl -X POST "http://localhost:8000/api/v1/validate/local" \
     ],
     "ontology_namespace": "https://example.org/formats#",
     "format_identifier": "Shapefile",
-    "mode": "full",
-    "expected_crs": "EPSG:4326"
+    "expected_metadata": {"crs": "EPSG:4326"}
   }'
 ```
 
-The body takes the same fields as `/validate`, with `file_path` and `secondary_file_paths` (absolute paths, as the client sees them) instead of the uploads. The endpoint is disabled unless `SOS_FFS_SHARED_DIRS` is set (see [Configuration](../README.md#configuration)), and only files inside those directories are accepted, also after following symlinks.
+The body takes the same fields as the upload, with `file_path` and `secondary_file_paths` (absolute paths, as the client sees them) instead of the files. The endpoints are disabled unless `SOS_FFS_SHARED_DIRS` is set (see [Configuration](../README.md#configuration)), and only files inside those directories are accepted, also after following symlinks.
 
 | Status | When |
 |--------|------|
 | `200` | Validation ran; `status` holds the outcome |
-| `400` | A path is not absolute, the mode is invalid, or the format is not supported |
+| `400` | A path is not absolute, the format is not supported, or `expected_metadata` has unsupported keys |
 | `403` | Local validation is disabled, or a path is outside the shared directories (including via `..` or symlinks) |
 | `404` | A path inside a shared directory does not exist |
 
-Clients should fall back to uploading via `/validate` on a `403`, e.g. for files outside the shared directories.
+Clients should fall back to the upload endpoint of the same mode on a `403`, e.g. for files outside the shared directories.
 
 ## Server-Timing header
 
-Both validation endpoints report how long the service's own steps took in a standard [`Server-Timing`](https://www.w3.org/TR/server-timing/) response header (milliseconds):
+The validation endpoints report how long the service's own steps took in a standard [`Server-Timing`](https://www.w3.org/TR/server-timing/) response header (milliseconds):
 
 ```
-Server-Timing: receive;dur=1.8, validate;dur=812.3     # /validate
-Server-Timing: resolve;dur=0.1, validate;dur=812.3     # /validate/local
+Server-Timing: validate;dur=0.4                        # /validate/basic
+Server-Timing: receive;dur=1.8, validate;dur=812.3     # /validate/structural, /validate/full
+Server-Timing: resolve;dur=0.1, validate;dur=812.3     # /validate/structural/local, /validate/full/local
 ```
 
 `receive` covers writing the uploads to a temporary directory, `resolve` the path checks, and `validate` the validation itself. The multipart body is received and parsed before the endpoint runs, so `receive` does not include the network transfer: derive it as the client's round-trip time minus the reported durations.

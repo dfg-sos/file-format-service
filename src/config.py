@@ -50,8 +50,9 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     # Comma-separated ``host_path[:container_path]`` entries. Files below these
-    # directories can be validated in place via ``/validate/local``; empty
-    # disables that endpoint. Paths containing ``:`` or ``,`` are not supported.
+    # directories can be validated in place via the ``/validate/*/local``
+    # endpoints; empty disables them. Paths containing ``:`` or ``,`` are not
+    # supported.
     shared_dirs: Annotated[list[SharedDir], NoDecode] = []
 
     @field_validator("shared_dirs", mode="before")

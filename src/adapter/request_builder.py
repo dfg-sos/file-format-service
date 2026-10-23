@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Optional
 
 from format_validator import (
-    EOMetadata,
     FileInput,
     MultiFileInput,
     FormatIdentifier,
@@ -18,6 +17,8 @@ from format_validator import (
     ValidationRequest,
     ValidationRequestBuilder,
 )
+
+from adapter.metadata import parse_metadata
 
 
 @dataclass
@@ -33,8 +34,7 @@ class ValidationRequestDTO:
     mode: ValidationMode
     file_path: Path
     secondary_file_paths: set[Path] = field(default_factory=set)
-    expected_crs: Optional[str] = None
-    expected_geometry_type: Optional[str] = None
+    expected_metadata: dict[str, str] = field(default_factory=dict)
 
 
 class HTTPValidationRequestBuilder(ValidationRequestBuilder):
@@ -52,9 +52,9 @@ class HTTPValidationRequestBuilder(ValidationRequestBuilder):
         """Build and return a ``ValidationRequest``, or ``None`` on failure.
 
         Returns ``None`` when the format identifier cannot be resolved, or
-        when the expected CRS / geometry type strings cannot be parsed into
-        an ``EOMetadata`` sidecar (e.g. an invalid CRS string) — in both
-        cases the orchestrator surfaces this as an uncertain result.
+        when the expected metadata cannot be parsed into the validator's
+        metadata sidecar (e.g. an invalid CRS string) — in both cases the
+        orchestrator surfaces this as an uncertain result.
         """
         format_id: Optional[FormatIdentifier] = self.translator.to_local(
             self.dto.format_identifier, self.dto.ontology_namespace
@@ -62,15 +62,10 @@ class HTTPValidationRequestBuilder(ValidationRequestBuilder):
         if format_id is None:
             return None
 
-        # ``EOMetadata.from_strings`` keeps CRS/geometry-type parsing (pyproj,
-        # shapely) inside the format_validator package; catching broadly here
-        # avoids this service needing to import pyproj just to name the
-        # exception type it can raise.
+        # Parsing the values (e.g. a CRS via pyproj) happens on the validator
+        # side; catching broadly avoids depending on its exception types.
         try:
-            metadata = EOMetadata.from_strings(
-                crs=self.dto.expected_crs,
-                geometry_type=self.dto.expected_geometry_type,
-            )
+            metadata = parse_metadata(format_id, self.dto.expected_metadata)
         except Exception:
             return None
 

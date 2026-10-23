@@ -4,14 +4,16 @@ Provides singleton instances of settings, services, and utilities so that
 routers can receive them via ``Depends`` without manual construction.
 """
 
+import json
 import logging
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import Depends, Form, HTTPException
+from fastapi import Depends, Form, HTTPException, status
 from format_validator import FormatTranslator
+from pydantic import ValidationError
 
-from api.schemas.validation import FileFormatValidationRequest
+from api.schemas.validation import FileFormatValidationRequest, FullValidationRequest
 from config import MAPPINGS_DIR, Settings
 from core import FormatOntology
 from service.ontology_registry import OntologyRegistry
@@ -91,34 +93,43 @@ def check_formats_defined(
         )
 
 
-def get_validation_request(
+def get_upload_request(
     ontology_namespace: str = Form(
         ..., description="Ontology namespace (base URI) that defines the format identifier."
     ),
     format_identifier: str = Form(
         ..., description="Format identifier in the given ontology (e.g. format_4119)."
     ),
-    mode: str = Form(
-        default="basic",
-        description="Validation mode: basic, structural, or full.",
-    ),
-    expected_crs: str | None = Form(
-        default=None,
-        description="Expected CRS for FULL-mode validation (any pyproj-recognized string).",
-    ),
-    expected_geometry_type: str | None = Form(
-        default=None,
-        description="Expected GeoJSON-style geometry type for FULL-mode validation on vector formats.",
-    ),
 ) -> FileFormatValidationRequest:
-    """Group multipart form fields into a ``FileFormatValidationRequest`` DTO."""
-    return FileFormatValidationRequest(
-        ontology_namespace=ontology_namespace,
-        format_identifier=format_identifier,
-        mode=mode,
-        expected_crs=expected_crs,
-        expected_geometry_type=expected_geometry_type,
-    )
+    """Group multipart form fields into a ``FileFormatValidationRequest``."""
+    return FileFormatValidationRequest(ontology_namespace=ontology_namespace, format_identifier=format_identifier)
+
+
+def get_full_upload_request(
+    request: FileFormatValidationRequest = Depends(get_upload_request),
+    expected_metadata: str | None = Form(
+        default=None,
+        description=(
+            'Expected metadata as a JSON object, e.g. {"crs": "EPSG:4326"}. '
+            "The supported keys depend on the validator of the format."
+        ),
+    ),
+) -> FullValidationRequest:
+    """Group multipart form fields into a ``FullValidationRequest``.
+
+    Raises ``HTTPException`` (422) when ``expected_metadata`` is not a JSON
+    object of strings.
+    """
+    try:
+        return FullValidationRequest(
+            **request.model_dump(),
+            expected_metadata=json.loads(expected_metadata) if expected_metadata else {},
+        )
+    except (json.JSONDecodeError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=f"expected_metadata must be a JSON object of strings: {exc}",
+        ) from exc
 
 
 def get_file_storage_path() -> Path:
