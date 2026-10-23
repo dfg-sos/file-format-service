@@ -29,14 +29,30 @@ def get_settings() -> Settings:
 
 
 def load_format_translator(mappings_dir: Path) -> FormatTranslator:
-    """Load the mapping files (``*.json``) in ``mappings_dir``.
+    """Load the mapping files (``*.json``) in ``mappings_dir`` into one translator.
 
-    A missing or empty directory yields a translator without mappings, which
-    rejects every format; this is logged as a warning.
+    Each file maps the format identifiers of the ontology ``ontology_uri`` to
+    validator format identifiers. The translator is keyed by the full format
+    IRI, ``ontology_uri`` followed by the identifier. A missing or empty
+    directory yields a translator without mappings, which rejects every
+    format; this is logged as a warning.
+
+    Raises:
+        ValueError: Two files map the same IRI to different formats, or a
+            file maps to a format identifier the validator does not know.
     """
-    translator = FormatTranslator(mappings_dir)
-    if translator.get_loaded_ontologies():
-        logger.info("Loaded format mappings for ontologies: %s", translator.get_loaded_ontologies())
+    translator = FormatTranslator({})
+    namespaces = []
+    for path in sorted(mappings_dir.glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        namespace = data["ontology_uri"]
+        namespaces.append(namespace)
+        try:
+            translator |= FormatTranslator({namespace + identifier: fid for identifier, fid in data["mappings"].items()})
+        except ValueError as exc:
+            raise ValueError(f"{path.name}: {exc}") from exc
+    if namespaces:
+        logger.info("Loaded format mappings for ontologies: %s", namespaces)
     else:
         logger.warning("No mapping files (*.json) found in %s, validation rejects every format", mappings_dir)
     return translator

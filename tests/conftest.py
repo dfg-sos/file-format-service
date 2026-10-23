@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from format_validator import FormatTranslator
 
+from api.dependencies import load_format_translator
 from core import FormatOntology
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -51,4 +52,4 @@ def example_serialisation(
 @pytest.fixture
 def translator() -> FormatTranslator:
     """Translator with the example mapping."""
-    return FormatTranslator(MAPPINGS)
+    return load_format_translator(MAPPINGS)
