@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "SOS-File-Format-Service"
-version = "0.1.0"
+version = "0.2.0"
 requires-python = ">=3.14"
 description = "REST API service for validating Earth Observation (EO) file formats and checking ontology-based format compatibility."
 readme = "README.md"
