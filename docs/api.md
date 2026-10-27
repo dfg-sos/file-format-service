@@ -4,7 +4,7 @@ Details of the endpoints listed in the [README](../README.md#api). Interactive d
 
 The examples use the example ontology and mapping from `tests/fixtures/` (namespace `https://example.org/formats#`), with `https://example.org/formats.ttl` as a placeholder for the ontology's URL.
 
-> **`ontology_namespace` vs `ontology_schema_url`:** the validation endpoints take the ontology's namespace (base URI), used to look up the [format mapping](../README.md#ontologies-and-mappings). The ontology endpoints take the URL of the OWL/RDF file itself.
+> **`ontology_namespace` vs `ontology_schema_url`:** the validation endpoints take the ontology's namespace (base URI), used to look up the [format mapping](integration.md#a-new-ontology-for-existing-validators). The ontology endpoints take the URL of the OWL/RDF file itself.
 
 ## Validation endpoints
 
