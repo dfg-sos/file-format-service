@@ -10,6 +10,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from format_validator import InvalidRequest
+from format_validator.registry import registry
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from api.routers import compatibility, format_info, validation
@@ -20,7 +21,9 @@ from service.shared_paths import PathNotAbsolute, PathNotShared, SharedFileMissi
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events (startup / shutdown)."""
-    # Any async initialisation (e.g. warming caches) can go here.
+    # Validator plugins register their format identifiers, which the mappings
+    # (loaded lazily on the first validation request) may refer to.
+    registry.load_plugins()
     yield
     # Teardown code can go here.
 

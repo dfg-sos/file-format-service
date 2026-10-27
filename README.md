@@ -58,20 +58,9 @@ curl -X POST "http://localhost:8000/api/v1/format-info" \
 The service is not tied to a particular ontology:
 
 - **`/compatibility` and `/format-info`** load the ontology from the `ontology_schema_url` of the request (HTTP(S) or `file://`) and cache it. Accepted serialisations are RDF/XML (`.owl`, `.rdf`), Turtle (`.ttl`), N-Triples (`.nt`), N3 (`.n3`) and JSON-LD (`.jsonld`), detected from the file extension, and over HTTP(S) first from the `Content-Type`.
-- **The `/validate/...` endpoints** translate the `format_identifier` of the ontology given by `ontology_namespace` into a format of the validator. This requires a mapping file for that namespace.
+- **The `/validate/...` endpoints** translate the `format_identifier` of the ontology given by `ontology_namespace` into a format of the validator. This requires a mapping file for that namespace in `mappings/` (`/app/mappings` in the image). No mappings are shipped.
 
-A mapping file maps the format identifiers of one ontology to those of the validator:
-
-```json
-{
-  "ontology_uri": "https://example.org/formats#",
-  "mappings": { "Shapefile": "shapefile", "GeoTIFF": "geotiff", "Vector": "gisvector" }
-}
-```
-
-The validator's identifiers are listed by `format_validator.supported_formats()` and matched case-insensitively. Abstract ones such as `gisvector` or `gisraster` accept a file that is valid for any of their concrete formats.
-
-The service loads every `*.json` file in `mappings/` (git-ignored; `/app/mappings` in the image) on the first validation request. No mappings are shipped: without any, validation rejects every format and the service logs a warning. Loading fails if a file maps to an identifier the validator does not know, or two files map the same format to different identifiers.
+[Integrating ontologies and validators](docs/integration.md) describes mapping files, and how to add validators for new formats as plugins without changing the service.
 
 The SOS vocabularies, including the EO file formats ontology, are maintained in [dfg-sos/ontologies](https://github.com/dfg-sos/ontologies) and published at `https://dfg-sos.github.io/ontologies/eo-formats.owl` (namespace `https://dfg-sos.github.io/ontologies/eo-formats#`).
 
