@@ -20,10 +20,10 @@ Swagger UI is served at `http://localhost:8000/docs`.
 |--------|------|-------------|
 | `GET` | `/health` | Health check probe |
 | `POST` | `/api/v1/validate/basic` | Check file names against a format; only the paths are sent |
-| `POST` | `/api/v1/validate/structural` | Check that uploaded files are structurally complete for a format |
-| `POST` | `/api/v1/validate/structural/local` | Same, for files on storage shared with the service, without uploading them |
-| `POST` | `/api/v1/validate/full` | Open uploaded files as the format and check their metadata |
-| `POST` | `/api/v1/validate/full/local` | Same, for files on storage shared with the service, without uploading them |
+| `POST` | `/api/v1/validate/metadata` | Open uploaded files as the format and check their header and metadata |
+| `POST` | `/api/v1/validate/metadata/local` | Same, for files on storage shared with the service, without uploading them |
+| `POST` | `/api/v1/validate/content` | Additionally read every pixel, feature or record of uploaded files |
+| `POST` | `/api/v1/validate/content/local` | Same, for files on storage shared with the service, without uploading them |
 | `POST` | `/api/v1/compatibility` | Check compatibility between two formats |
 | `POST` | `/api/v1/format-info` | Retrieve metadata of a format from an ontology |
 
@@ -35,8 +35,8 @@ curl -X POST "http://localhost:8000/api/v1/validate/basic" \
   -H "Content-Type: application/json" \
   -d '{"file_path": "/path/to/your/file.geojson", "ontology_namespace": "https://example.org/formats#", "format_identifier": "GeoJSON"}'
 
-# Upload and fully validate a file, including its CRS
-curl -X POST "http://localhost:8000/api/v1/validate/full" \
+# Upload a file and validate its header, including its CRS
+curl -X POST "http://localhost:8000/api/v1/validate/metadata" \
   -F "file=@/path/to/your/file.geojson" \
   -F "ontology_namespace=https://example.org/formats#" \
   -F "format_identifier=GeoJSON" \
@@ -76,7 +76,7 @@ Environment variables, prefixed with `SOS_FFS_`:
 |----------|---------|-------------|
 | `SOS_FFS_HOST` | `0.0.0.0` | Bind host |
 | `SOS_FFS_PORT` | `8000` | Bind port |
-| `SOS_FFS_SHARED_DIRS` | *(empty)* | Directories in which clients may reference files for `/validate/structural/local` and `/validate/full/local`; empty disables these endpoints. Comma-separated absolute paths, `host_path` or `host_path:container_path` when the service sees the directory elsewhere (paths containing `:` or `,` are not supported). |
+| `SOS_FFS_SHARED_DIRS` | *(empty)* | Directories in which clients may reference files for `/validate/metadata/local` and `/validate/content/local`; empty disables these endpoints. Comma-separated absolute paths, `host_path` or `host_path:container_path` when the service sees the directory elsewhere (paths containing `:` or `,` are not supported). |
 
 ```bash
 SOS_FFS_SHARED_DIRS=/home/user/data,/scratch      # service runs directly on the host
@@ -87,7 +87,7 @@ Clients always send host paths; the service maps them to the container path.
 
 ### Concurrency
 
-Validation runs in a thread pool, so a long validation does not hold up other requests. For CPU-heavy full validation, set `WEB_CONCURRENCY` to run several worker processes (each keeps its own caches of mappings and ontologies). The service keeps no state between requests, so it can also run as several replicas behind a load balancer.
+Validation runs in a thread pool, so a long validation does not hold up other requests. For CPU-heavy content validation, set `WEB_CONCURRENCY` to run several worker processes (each keeps its own caches of mappings and ontologies). The service keeps no state between requests, so it can also run as several replicas behind a load balancer.
 
 ### Container image
 

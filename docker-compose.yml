@@ -7,7 +7,7 @@ services:
     # environment:
       # Worker processes; validation also runs in a thread pool per worker.
     #   WEB_CONCURRENCY: 4
-      # Validate files on the host in place via /api/v1/validate/{structural,full}/local:
+      # Validate files on the host in place via /api/v1/validate/{metadata,content}/local:
       # mount the host directory read-only and map host path -> mount point.
       # Clients then send host paths like /home/user/data/run42/out.shp.
     #   SOS_FFS_SHARED_DIRS: ${PWD}/tmp/:/data

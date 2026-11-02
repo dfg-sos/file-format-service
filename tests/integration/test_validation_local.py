@@ -47,16 +47,18 @@ class TestSameResultAsUpload:
     @pytest.mark.parametrize(
         ("mode", "fixture", "metadata"),
         [
-            ("structural", "sample.geojson", {}),
-            ("full", "sample.geojson", {}),
-            ("full", "sample.geojson", {"crs": "EPSG:4326"}),
-            ("full", "sample.geojson", {"crs": "EPSG:3857"}),
-            ("full", "sample_point.geojson", {"geometry_type": "Point"}),
-            ("full", "sample_point.geojson", {"geometry_type": "Polygon"}),
+            ("metadata", "sample.geojson", {}),
+            ("content", "sample.geojson", {}),
+            ("metadata", "sample.geojson", {"crs": "EPSG:4326"}),
+            ("metadata", "sample.geojson", {"crs": "EPSG:3857"}),
+            ("metadata", "sample_point.geojson", {"geometry_type": "Point"}),
+            ("metadata", "sample_point.geojson", {"geometry_type": "Polygon"}),
+            ("content", "sample_point.geojson", {"geometry_type": "Point"}),
+            ("content", "sample_point.geojson", {"geometry_type": "Polygon"}),
         ],
     )
     def test_geojson(self, local_client: TestClient, mode: str, fixture: str, metadata: dict) -> None:
-        form = {**GEOJSON_FORM, "expected_metadata": metadata} if mode == "full" else GEOJSON_FORM
+        form = {**GEOJSON_FORM, "expected_metadata": metadata}
         path = DATA / fixture
         uploaded = upload(local_client, mode, form, path)
         local = _local(local_client, mode, form, path)
@@ -71,31 +73,31 @@ class TestSameResultAsUpload:
         self, local_client: TestClient, sample_shapefile: Path, extensions: list[str], expected_status: str
     ) -> None:
         secondary = [sample_shapefile.with_suffix(ext) for ext in extensions]
-        uploaded = upload(local_client, "structural", SHAPEFILE_FORM, sample_shapefile, secondary)
-        local = _local(local_client, "structural", SHAPEFILE_FORM, sample_shapefile, secondary)
+        uploaded = upload(local_client, "metadata", SHAPEFILE_FORM, sample_shapefile, secondary)
+        local = _local(local_client, "metadata", SHAPEFILE_FORM, sample_shapefile, secondary)
         assert uploaded.status_code == local.status_code == 200
         assert _outcome(local) == _outcome(uploaded)
         assert local.json()["status"] == expected_status
 
     def test_files_are_not_deleted(self, local_client: TestClient, sample_shapefile: Path) -> None:
         secondary = [sample_shapefile.with_suffix(ext) for ext in (".shx", ".dbf", ".prj")]
-        _local(local_client, "full", SHAPEFILE_FORM, sample_shapefile, secondary)
+        _local(local_client, "metadata", SHAPEFILE_FORM, sample_shapefile, secondary)
         assert all(p.exists() for p in [sample_shapefile, *secondary])
 
 
 class TestAccessControl:
     def test_disabled_without_shared_dirs(self) -> None:
         client = _client_with_shared_dirs()
-        response = _local(client, "structural", GEOJSON_FORM, DATA / "sample.geojson")
+        response = _local(client, "metadata", GEOJSON_FORM, DATA / "sample.geojson")
         assert response.status_code == 403
         assert "disabled" in response.json()["detail"]
 
     def test_outside_shared_dirs(self, local_client: TestClient) -> None:
-        response = _local(local_client, "structural", GEOJSON_FORM, "/etc/passwd")
+        response = _local(local_client, "metadata", GEOJSON_FORM, "/etc/passwd")
         assert response.status_code == 403
 
     def test_dotdot_escape(self, local_client: TestClient) -> None:
-        response = _local(local_client, "structural", GEOJSON_FORM, f"{DATA}/../../../pyproject.toml")
+        response = _local(local_client, "metadata", GEOJSON_FORM, f"{DATA}/../../../pyproject.toml")
         assert response.status_code == 403
 
     def test_symlink_escape(self, tmp_path: Path) -> None:
@@ -103,36 +105,36 @@ class TestAccessControl:
         shared.mkdir()
         (shared / "sample.geojson").symlink_to(DATA / "sample.geojson")
         client = _client_with_shared_dirs(shared)
-        response = _local(client, "structural", GEOJSON_FORM, shared / "sample.geojson")
+        response = _local(client, "metadata", GEOJSON_FORM, shared / "sample.geojson")
         assert response.status_code == 403
 
     def test_secondary_file_outside_shared_dirs(self, local_client: TestClient, sample_shapefile: Path) -> None:
-        response = _local(local_client, "structural", SHAPEFILE_FORM, sample_shapefile, [Path("/etc/passwd")])
+        response = _local(local_client, "metadata", SHAPEFILE_FORM, sample_shapefile, [Path("/etc/passwd")])
         assert response.status_code == 403
 
     def test_missing_file(self, local_client: TestClient) -> None:
-        response = _local(local_client, "structural", GEOJSON_FORM, DATA / "missing.geojson")
+        response = _local(local_client, "metadata", GEOJSON_FORM, DATA / "missing.geojson")
         assert response.status_code == 404
 
     def test_relative_path(self, local_client: TestClient) -> None:
-        response = _local(local_client, "structural", GEOJSON_FORM, "sample.geojson")
+        response = _local(local_client, "metadata", GEOJSON_FORM, "sample.geojson")
         assert response.status_code == 400
 
     def test_missing_file_path(self, local_client: TestClient) -> None:
-        response = local_client.post("/api/v1/validate/structural/local", json=GEOJSON_FORM)
+        response = local_client.post("/api/v1/validate/metadata/local", json=GEOJSON_FORM)
         assert response.status_code == 422
 
 
 class TestRequestErrorsLikeUpload:
     def test_unknown_format(self, local_client: TestClient) -> None:
         form = {**GEOJSON_FORM, "format_identifier": "format_99999"}
-        response = _local(local_client, "structural", form, DATA / "sample.geojson")
+        response = _local(local_client, "metadata", form, DATA / "sample.geojson")
         assert response.status_code == 400
 
     def test_request_checked_before_paths(self, local_client: TestClient) -> None:
         """A request that cannot be validated is rejected before its paths are looked at."""
         form = {**GEOJSON_FORM, "format_identifier": "format_99999"}
-        response = _local(local_client, "structural", form, "/etc/passwd")
+        response = _local(local_client, "metadata", form, "/etc/passwd")
         assert response.status_code == 400
 
     @pytest.mark.parametrize(
@@ -145,7 +147,7 @@ class TestRequestErrorsLikeUpload:
     )
     def test_invalid_metadata(self, local_client: TestClient, metadata: dict, status_code: int) -> None:
         form = {**GEOJSON_FORM, "expected_metadata": metadata}
-        response = _local(local_client, "full", form, DATA / "sample.geojson")
+        response = _local(local_client, "metadata", form, DATA / "sample.geojson")
         assert response.status_code == status_code
 
 
@@ -153,11 +155,11 @@ class TestServerTiming:
     _ENTRY = r"{name};dur=\d+\.\d"
 
     def test_upload(self, local_client: TestClient) -> None:
-        response = upload(local_client, "structural", GEOJSON_FORM, DATA / "sample.geojson")
+        response = upload(local_client, "metadata", GEOJSON_FORM, DATA / "sample.geojson")
         expected = ", ".join(self._ENTRY.format(name=n) for n in ("receive", "validate"))
         assert re.fullmatch(expected, response.headers["server-timing"])
 
     def test_local(self, local_client: TestClient) -> None:
-        response = _local(local_client, "structural", GEOJSON_FORM, DATA / "sample.geojson")
+        response = _local(local_client, "metadata", GEOJSON_FORM, DATA / "sample.geojson")
         expected = ", ".join(self._ENTRY.format(name=n) for n in ("resolve", "validate"))
         assert re.fullmatch(expected, response.headers["server-timing"])

@@ -19,8 +19,8 @@ class FileFormatValidationRequest(BaseModel):
     )
 
 
-class FullValidationRequest(FileFormatValidationRequest):
-    """Request for full validation, which also checks the file's metadata."""
+class MetadataValidationRequest(FileFormatValidationRequest):
+    """Request for metadata or content validation, which also checks the file's metadata."""
 
     expected_metadata: dict[str, str] = Field(
         default_factory=dict,
@@ -49,8 +49,8 @@ class PathValidationRequest(FileFormatValidationRequest):
     )
 
 
-class FullPathValidationRequest(PathValidationRequest, FullValidationRequest):
-    """JSON body for full validation of a file on shared storage."""
+class MetadataPathValidationRequest(PathValidationRequest, MetadataValidationRequest):
+    """JSON body for metadata or content validation of a file on shared storage."""
 
 
 class FileFormatValidationEvent(BaseModel):

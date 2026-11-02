@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "SOS-File-Format-Service"
-version = "0.2.0"
+version = "0.3.0"
 requires-python = ">=3.14"
 description = "REST API service for validating Earth Observation (EO) file formats and checking ontology-based format compatibility."
 readme = "README.md"
@@ -24,7 +24,7 @@ dependencies = [
     "aiofiles",
     "httpx>=0.27",
     "rdflib",
-    "format-validator @ git+https://github.com/dfg-sos/file-format-validator.git@v0.3.0",
+    "format-validator @ git+https://github.com/dfg-sos/file-format-validator.git@v0.4.0",
 ]
 
 [project.optional-dependencies]

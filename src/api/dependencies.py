@@ -13,7 +13,7 @@ from fastapi import Depends, Form, HTTPException, status
 from format_validator import FormatTranslator
 from pydantic import ValidationError
 
-from api.schemas.validation import FileFormatValidationRequest, FullValidationRequest
+from api.schemas.validation import FileFormatValidationRequest, MetadataValidationRequest
 from config import MAPPINGS_DIR, Settings
 from core import FormatOntology
 from service.ontology_registry import OntologyRegistry
@@ -121,7 +121,7 @@ def get_upload_request(
     return FileFormatValidationRequest(ontology_namespace=ontology_namespace, format_identifier=format_identifier)
 
 
-def get_full_upload_request(
+def get_metadata_upload_request(
     request: FileFormatValidationRequest = Depends(get_upload_request),
     expected_metadata: str | None = Form(
         default=None,
@@ -130,14 +130,14 @@ def get_full_upload_request(
             "The supported keys depend on the validator of the format."
         ),
     ),
-) -> FullValidationRequest:
-    """Group multipart form fields into a ``FullValidationRequest``.
+) -> MetadataValidationRequest:
+    """Group multipart form fields into a ``MetadataValidationRequest``.
 
     Raises ``HTTPException`` (422) when ``expected_metadata`` is not a JSON
     object of strings.
     """
     try:
-        return FullValidationRequest(
+        return MetadataValidationRequest(
             **request.model_dump(),
             expected_metadata=json.loads(expected_metadata) if expected_metadata else {},
         )
