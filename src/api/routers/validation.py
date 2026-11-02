@@ -7,9 +7,10 @@ There is one endpoint per validation mode:
 
 - ``/validate/basic`` checks only file names, so the client sends paths and
   the service never touches the files.
-- ``/validate/structural`` and ``/validate/full`` take uploaded files; their
+- ``/validate/metadata`` and ``/validate/content`` take uploaded files; their
   ``/local`` variants read the files in place from storage shared with the
-  client.
+  client. ``metadata`` reads only the header or declarations of a file,
+  ``content`` also reads every pixel, feature or record.
 
 The endpoints report the duration of their steps in a ``Server-Timing``
 response header. Request errors raised by the service layer are mapped to
@@ -26,15 +27,15 @@ from format_validator import FormatTranslator, ValidationMode, validate
 
 from api.dependencies import (
     get_format_translator,
-    get_full_upload_request,
+    get_metadata_upload_request,
     get_shared_path_resolver,
     get_upload_request,
 )
 from api.schemas.validation import (
     FileFormatValidationRequest,
     FileFormatValidationResponse,
-    FullPathValidationRequest,
-    FullValidationRequest,
+    MetadataPathValidationRequest,
+    MetadataValidationRequest,
     PathValidationRequest,
 )
 from api.timing import ServerTiming
@@ -58,7 +59,7 @@ _SECONDARY_FILES = File(
 
 
 def _expected_metadata(request: FileFormatValidationRequest) -> dict[str, str] | None:
-    return request.expected_metadata if isinstance(request, FullValidationRequest) else None
+    return request.expected_metadata if isinstance(request, MetadataValidationRequest) else None
 
 
 def _validate_upload(
@@ -163,90 +164,43 @@ def validate_basic(
 
 
 @router.post(
-    "/validate/structural",
+    "/validate/metadata",
     response_model=FileFormatValidationResponse,
-    summary="Validate the structure of uploaded files",
+    summary="Validate the header and metadata of uploaded files",
     response_description="Validation outcome with errors, warnings, and infos.",
 )
-def validate_structural(
+def validate_metadata(
     response: Response,
     file: UploadFile = _PRIMARY_FILE,
     secondary_files: list[UploadFile] = _SECONDARY_FILES,
-    request: FileFormatValidationRequest = Depends(get_upload_request),
+    request: MetadataValidationRequest = Depends(get_metadata_upload_request),
     translator: FormatTranslator = Depends(get_format_translator),
 ) -> FileFormatValidationResponse:
-    """Validate uploaded files structurally against the specified format.
+    """Open uploaded files as the format and check their header or declarations, including their metadata.
+
+    Only the header is read, so the cost does not grow with the file size.
 
     Multi-file formats are supported by uploading the primary file as ``file``
     and the remaining components as repeated ``secondary_files`` parts.
-    """
-    return _validate_upload(ValidationMode.STRUCTURAL, request, file, secondary_files, response, translator)
-
-
-@router.post(
-    "/validate/structural/local",
-    response_model=FileFormatValidationResponse,
-    summary="Validate the structure of files on shared storage without uploading them",
-    response_description="Validation outcome with errors, warnings, and infos.",
-)
-def validate_structural_local(
-    request: PathValidationRequest,
-    response: Response,
-    translator: FormatTranslator = Depends(get_format_translator),
-    resolver: SharedPathResolver = Depends(get_shared_path_resolver),
-) -> FileFormatValidationResponse:
-    """Like ``/validate/structural``, but the files are read in place.
-
-    Paths are given as the client sees them and are mapped via
-    ``SOS_FFS_SHARED_DIRS``; the service only reads them.
-
-    Status codes:
-
-    - ``200``: validation ran; ``status`` holds the outcome.
-    - ``400``: a path is not absolute, or the format is not supported.
-    - ``403``: local validation is disabled (no shared directories
-      configured), or a path is outside the shared directories, including via
-      ``..`` or symlinks. Clients can fall back to the upload endpoint.
-    - ``404``: a path inside a shared directory does not exist.
-    - ``422``: the request body is invalid.
-    """
-    return _validate_local(ValidationMode.STRUCTURAL, request, response, translator, resolver)
-
-
-@router.post(
-    "/validate/full",
-    response_model=FileFormatValidationResponse,
-    summary="Fully validate uploaded files, including their metadata",
-    response_description="Validation outcome with errors, warnings, and infos.",
-)
-def validate_full(
-    response: Response,
-    file: UploadFile = _PRIMARY_FILE,
-    secondary_files: list[UploadFile] = _SECONDARY_FILES,
-    request: FullValidationRequest = Depends(get_full_upload_request),
-    translator: FormatTranslator = Depends(get_format_translator),
-) -> FileFormatValidationResponse:
-    """Open uploaded files and validate them against the specified format.
-
     ``expected_metadata`` is a JSON object whose supported keys depend on the
     validator of the format.
     """
-    return _validate_upload(ValidationMode.FULL, request, file, secondary_files, response, translator)
+    return _validate_upload(ValidationMode.METADATA, request, file, secondary_files, response, translator)
 
 
 @router.post(
-    "/validate/full/local",
+    "/validate/metadata/local",
     response_model=FileFormatValidationResponse,
-    summary="Fully validate files on shared storage without uploading them",
+    summary="Validate the header and metadata of files on shared storage without uploading them",
     response_description="Validation outcome with errors, warnings, and infos.",
 )
-def validate_full_local(
-    request: FullPathValidationRequest,
+def validate_metadata_local(
+    request: MetadataPathValidationRequest,
     response: Response,
     translator: FormatTranslator = Depends(get_format_translator),
     resolver: SharedPathResolver = Depends(get_shared_path_resolver),
 ) -> FileFormatValidationResponse:
-    """Like ``/validate/full``, but the files are read in place.
+    """Like ``/validate/metadata``, but the files are read in place.
 
     Paths are given as the client sees them and are mapped via
     ``SOS_FFS_SHARED_DIRS``; the service only reads them.
@@ -263,4 +217,61 @@ def validate_full_local(
     - ``404``: a path inside a shared directory does not exist.
     - ``422``: the request body is invalid.
     """
-    return _validate_local(ValidationMode.FULL, request, response, translator, resolver)
+    return _validate_local(ValidationMode.METADATA, request, response, translator, resolver)
+
+
+@router.post(
+    "/validate/content",
+    response_model=FileFormatValidationResponse,
+    summary="Validate the header, metadata and content of uploaded files",
+    response_description="Validation outcome with errors, warnings, and infos.",
+)
+def validate_content(
+    response: Response,
+    file: UploadFile = _PRIMARY_FILE,
+    secondary_files: list[UploadFile] = _SECONDARY_FILES,
+    request: MetadataValidationRequest = Depends(get_metadata_upload_request),
+    translator: FormatTranslator = Depends(get_format_translator),
+) -> FileFormatValidationResponse:
+    """Like ``/validate/metadata``, then read every pixel, feature or record of the files.
+
+    The content is read only if the metadata checks did not fail.
+
+    Multi-file formats are supported by uploading the primary file as ``file``
+    and the remaining components as repeated ``secondary_files`` parts.
+    ``expected_metadata`` is a JSON object whose supported keys depend on the
+    validator of the format.
+    """
+    return _validate_upload(ValidationMode.CONTENT, request, file, secondary_files, response, translator)
+
+
+@router.post(
+    "/validate/content/local",
+    response_model=FileFormatValidationResponse,
+    summary="Validate the header, metadata and content of files on shared storage without uploading them",
+    response_description="Validation outcome with errors, warnings, and infos.",
+)
+def validate_content_local(
+    request: MetadataPathValidationRequest,
+    response: Response,
+    translator: FormatTranslator = Depends(get_format_translator),
+    resolver: SharedPathResolver = Depends(get_shared_path_resolver),
+) -> FileFormatValidationResponse:
+    """Like ``/validate/content``, but the files are read in place.
+
+    Paths are given as the client sees them and are mapped via
+    ``SOS_FFS_SHARED_DIRS``; the service only reads them.
+
+    Status codes:
+
+    - ``200``: validation ran; ``status`` holds the outcome.
+    - ``400``: a path is not absolute, the format is not supported, or
+      ``expected_metadata`` has keys or values the format's validator does
+      not support.
+    - ``403``: local validation is disabled (no shared directories
+      configured), or a path is outside the shared directories, including via
+      ``..`` or symlinks. Clients can fall back to the upload endpoint.
+    - ``404``: a path inside a shared directory does not exist.
+    - ``422``: the request body is invalid.
+    """
+    return _validate_local(ValidationMode.CONTENT, request, response, translator, resolver)

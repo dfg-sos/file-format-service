@@ -1,5 +1,6 @@
-"""Integration tests for the upload endpoints ``/validate/structural`` and ``/validate/full``."""
+"""Integration tests for the upload endpoints ``/validate/metadata`` and ``/validate/metadata``."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -13,7 +14,7 @@ SAMPLE = DATA / "sample.geojson"
 SAMPLE_POINT = DATA / "sample_point.geojson"
 
 
-def _validate(client: TestClient, path: Path = SAMPLE, mode: str = "structural", **fields: object) -> Response:
+def _validate(client: TestClient, path: Path = SAMPLE, mode: str = "metadata", **fields: object) -> Response:
     """Upload ``path`` as GeoJSON; ``fields`` override the form, ``None`` drops a field."""
     form = {k: v for k, v in (GEOJSON_FORM | fields).items() if v is not None}
     return upload(client, mode, form, path)
@@ -26,7 +27,7 @@ def _messages(response: Response, kind: str) -> list[str]:
 
 class TestRequestErrors:
     def test_missing_file(self, client: TestClient) -> None:
-        response = client.post("/api/v1/validate/structural", data=GEOJSON_FORM)
+        response = client.post("/api/v1/validate/metadata", data=GEOJSON_FORM)
         assert response.status_code == 422
 
     @pytest.mark.parametrize("mode", ["thorough", "BASIC"])
@@ -65,7 +66,7 @@ class TestOutcome:
         assert response.json()["status"] == "SUCCESS"
         assert any("valid as 'GeoJSON'" in m for m in _messages(response, "infos"))
 
-    @pytest.mark.parametrize("mode", ["structural", "full"])
+    @pytest.mark.parametrize("mode", ["metadata", "content"])
     def test_modes(self, client: TestClient, mode: str) -> None:
         """Both upload modes succeed for a valid file."""
         assert _validate(client, mode=mode).json()["status"] == "SUCCESS"
@@ -90,7 +91,7 @@ class TestFullModeMetadata:
         ],
     )
     def test_checks_skipped_without_expected_values(self, client: TestClient, fields: dict) -> None:
-        response = _validate(client, mode="full", **fields)
+        response = _validate(client, mode="metadata", **fields)
         assert response.json()["status"] == "SUCCESS"
         infos = _messages(response, "infos")
         assert any("skipping CRS validation" in m for m in infos)
@@ -108,7 +109,7 @@ class TestFullModeMetadata:
         ],
     )
     def test_match_succeeds(self, client: TestClient, path: Path, fields: dict) -> None:
-        response = _validate(client, path, mode="full", **fields)
+        response = _validate(client, path, mode="metadata", **fields)
         assert response.json()["status"] == "SUCCESS"
         assert _messages(response, "errors") == []
 
@@ -126,7 +127,7 @@ class TestFullModeMetadata:
         ],
     )
     def test_mismatch_fails(self, client: TestClient, path: Path, fields: dict, message: str) -> None:
-        response = _validate(client, path, mode="full", **fields)
+        response = _validate(client, path, mode="metadata", **fields)
         assert response.json()["status"] == "FAILURE"
         assert any(message in m for m in _messages(response, "errors"))
 
@@ -138,7 +139,7 @@ class TestFullModeMetadata:
         ],
     )
     def test_unparseable_value_rejected(self, client: TestClient, path: Path, fields: dict) -> None:
-        response = _validate(client, path, mode="full", **fields)
+        response = _validate(client, path, mode="metadata", **fields)
         assert response.status_code == 400
 
     @pytest.mark.parametrize(
@@ -152,7 +153,7 @@ class TestFullModeMetadata:
         ],
     )
     def test_unsupported_key_rejected(self, client: TestClient, format_identifier: str, metadata: dict) -> None:
-        response = _validate(client, mode="full", format_identifier=format_identifier, expected_metadata=metadata)
+        response = _validate(client, mode="metadata", format_identifier=format_identifier, expected_metadata=metadata)
         assert response.status_code == 400
         assert "Unsupported metadata keys" in response.json()["detail"]
 
@@ -165,20 +166,37 @@ class TestFullModeMetadata:
         ],
     )
     def test_invalid_metadata_field(self, client: TestClient, raw: str) -> None:
-        assert _validate(client, mode="full", expected_metadata=raw).status_code == 422
+        assert _validate(client, mode="metadata", expected_metadata=raw).status_code == 422
 
     def test_rejected_request_writes_no_upload(self, client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
         def fail(*args: object) -> None:
             raise AssertionError("upload written for a rejected request")
 
         monkeypatch.setattr("service.uploads.StagedUploads.write", fail)
-        response = _validate(client, mode="full", expected_metadata={"crs": "totally-bogus-crs-string"})
+        response = _validate(client, mode="metadata", expected_metadata={"crs": "totally-bogus-crs-string"})
         assert response.status_code == 400
 
-    def test_structural_ignores_metadata_field(self, client: TestClient) -> None:
-        """Metadata belongs to full validation only; the structural form has no such field."""
-        response = _validate(client, expected_metadata={"encoding": "utf-8"})
-        assert response.json()["status"] == "SUCCESS"
+
+
+class TestContentValidation:
+    @staticmethod
+    def _lines_then_point(path: Path) -> Path:
+        """More LineStrings than the metadata check samples, then one Point."""
+        lines = [
+            {"type": "Feature", "properties": {}, "geometry": {"type": "LineString", "coordinates": [[i, 0], [i, 1]]}}
+            for i in range(60)
+        ]
+        point = {"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [0, 0]}}
+        path.write_text(json.dumps({"type": "FeatureCollection", "features": [*lines, point]}))
+        return path
+
+    def test_only_content_reads_every_feature(self, client: TestClient, tmp_path: Path) -> None:
+        path = self._lines_then_point(tmp_path / "mixed.geojson")
+        metadata = {"geometry_type": "LineString"}
+        assert _validate(client, path, mode="metadata", expected_metadata=metadata).json()["status"] == "SUCCESS"
+        response = _validate(client, path, mode="content", expected_metadata=metadata)
+        assert response.json()["status"] == "FAILURE"
+        assert any("1 of 61 features" in m for m in _messages(response, "errors"))
 
 
 class TestMultiFileValidation:
@@ -195,7 +213,7 @@ class TestMultiFileValidation:
         self, client: TestClient, sample_shapefile: Path, extensions: list[str], status: str
     ) -> None:
         secondary = [sample_shapefile.with_suffix(ext) for ext in extensions]
-        response = upload(client, "structural", self.FORM, sample_shapefile, secondary)
+        response = upload(client, "metadata", self.FORM, sample_shapefile, secondary)
         assert response.status_code == 200
         assert response.json()["status"] == status
         if status == "FAILURE":
@@ -204,7 +222,7 @@ class TestMultiFileValidation:
     def test_duplicate_file_names_rejected(self, client: TestClient, sample_shapefile: Path) -> None:
         with sample_shapefile.open("rb") as f:
             response = client.post(
-                "/api/v1/validate/structural",
+                "/api/v1/validate/metadata",
                 files=[
                     ("file", (sample_shapefile.name, f, "application/octet-stream")),
                     ("secondary_files", (sample_shapefile.name, b"x", "application/octet-stream")),

@@ -52,7 +52,11 @@ class FastaValidator(FileFormatValidator):
     def get_extensions(self):
         return [".fasta", ".fa"]
 
-    def assert_can_open(self, request):  # the content check of full mode
+    def assert_can_open(self, request):  # metadata mode: read the header only
+        ...
+        return ValidationResult.success(request)
+
+    def assert_content(self, request):  # content mode: read every record; optional, UNCERTAIN otherwise
         ...
         return ValidationResult.success(request)
 ```
