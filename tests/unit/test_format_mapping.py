@@ -17,7 +17,7 @@ class TestFormatTranslator:
     """The example mapping, keyed by full format IRI."""
 
     def test_to_local_known_format(self, translator: FormatTranslator) -> None:
-        assert translator.to_local(EXAMPLE_NAMESPACE + "Shapefile") == FormatIdentifier.SHAPEFILE
+        assert translator.to_local(EXAMPLE_NAMESPACE + "Shapefile") == FormatIdentifier.get("Shapefile")
 
     def test_to_local_abstract_format(self, translator: FormatTranslator) -> None:
         assert translator.to_local(EXAMPLE_NAMESPACE + "Vector") == FormatIdentifier.get("GISVector")
@@ -33,7 +33,7 @@ class TestFormatTranslator:
         assert translator.to_local(iri) is None
 
     def test_to_external(self, translator: FormatTranslator) -> None:
-        assert translator.to_external(FormatIdentifier.SHAPEFILE) == EXAMPLE_NAMESPACE + "Shapefile"
+        assert translator.to_external(FormatIdentifier.get("Shapefile")) == EXAMPLE_NAMESPACE + "Shapefile"
 
 
 class TestExampleMapping:
@@ -57,8 +57,8 @@ class TestLoadFormatTranslator:
         self._write_mapping(tmp_path, "a", "https://a.org/fmt#", {"Roads": "Shapefile"})
         self._write_mapping(tmp_path, "b", "https://b.org/fmt#", {"Elevation": "GeoTIFF"})
         translator = load_format_translator(tmp_path)
-        assert translator.to_local("https://a.org/fmt#Roads") == FormatIdentifier.SHAPEFILE
-        assert translator.to_local("https://b.org/fmt#Elevation") == FormatIdentifier.GEOTIFF
+        assert translator.to_local("https://a.org/fmt#Roads") == FormatIdentifier.get("Shapefile")
+        assert translator.to_local("https://b.org/fmt#Elevation") == FormatIdentifier.get("GeoTIFF")
 
     def test_same_iri_in_two_files_must_agree(self, tmp_path: Path) -> None:
         self._write_mapping(tmp_path, "a", "https://a.org/fmt#", {"Roads": "Shapefile"})
