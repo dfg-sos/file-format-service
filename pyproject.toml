@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "SOS-File-Format-Service"
-version = "0.3.0"
+version = "0.4.0"
 requires-python = ">=3.14"
 description = "REST API service for validating files against formats of an ontology and checking ontology-based format compatibility. Validators for the formats come from format-validator plugins."
 readme = "README.md"
