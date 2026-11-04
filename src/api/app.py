@@ -3,27 +3,41 @@
 Wires all routers, exception handlers, and metadata together.
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from format_validator import InvalidRequest
-from format_validator.registry import registry
+from format_validator import InvalidRequest, supported_formats
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from api.dependencies import get_format_translator
 from api.routers import compatibility, format_info, validation
 from config import Settings
 from service.shared_paths import PathNotAbsolute, PathNotShared, SharedFileMissing
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events (startup / shutdown)."""
-    # Validator plugins register their format identifiers, which the mappings
-    # (loaded lazily on the first validation request) may refer to.
-    registry.load_plugins()
+    # The validator core defines no formats: importing format_validator loads
+    # the installed plugins, which register the format identifiers the mappings
+    # refer to. Loading them again would re-import a plugin that failed part-way
+    # and fail on its earlier registrations.
+    formats = supported_formats()
+    if formats:
+        logger.info("Formats with a validator: %s", [str(fmt) for fmt in formats])
+    else:
+        logger.warning("No validator plugin installed, validation rejects every format")
+    # Load the mappings now, so a broken mapping (e.g. to a format no installed
+    # plugin defines) stops the startup instead of failing every validation
+    # request. Respects a test override of the dependency.
+    load_translator = app.dependency_overrides.get(get_format_translator, get_format_translator)
+    load_translator()
     yield
     # Teardown code can go here.
 

@@ -1,13 +1,13 @@
 # SOS File Format Service
 
-A FastAPI service that validates Earth Observation (EO) files against formats defined in an OWL/RDF ontology, and checks whether two formats are compatible according to that ontology (`rdfs:subClassOf`, `owl:equivalentClass`). Validation is done by the [`format_validator`](https://github.com/dfg-sos/file-format-validator) module; the service ships no ontology of its own, see [Ontologies and mappings](#ontologies-and-mappings).
+A FastAPI service that validates files against formats defined in an OWL/RDF ontology, and checks whether two formats are compatible according to that ontology (`rdfs:subClassOf`, `owl:equivalentClass`). Validation is done by the [`format_validator`](https://github.com/dfg-sos/file-format-validator) module, whose core defines no formats: validator plugins add them, e.g. the EO plugin `format-validator-eo` (GeoTIFF, Shapefile, GeoPackage, …). The service ships no ontology of its own, see [Ontologies and mappings](#ontologies-and-mappings).
 
 ## Quick start
 
 Requires Python >= 3.14 and [uv](https://docs.astral.sh/uv/).
 
 ```shell
-uv sync --extra dev
+uv sync --extra dev                # or --extra eo: the EO plugin without the development tools
 mkdir -p mappings && cp tests/fixtures/mappings/example-formats.json mappings/   # example mapping
 uv run uvicorn main:app --app-dir src --port 8000
 ```
@@ -91,7 +91,14 @@ Validation runs in a thread pool, so a long validation does not hold up other re
 
 ### Container image
 
-The image is published to `ghcr.io/dfg-sos/file-format-service` (`linux/amd64`) as `latest` and, for Git tags `v1.2.3`, as `1.2.3` and `1.2`. Mappings, shared data and local ontologies are mounted at run time:
+Two images are published (`linux/amd64`) as `latest` and, for Git tags `v1.2.3`, as `1.2.3` and `1.2`:
+
+| Image | Validators |
+|-------|------------|
+| `ghcr.io/dfg-sos/file-format-service` | none: the core, for images with other plugins |
+| `ghcr.io/dfg-sos/file-format-service-eo` | the EO plugin (on the GDAL base image) |
+
+Without a plugin, validation rejects every format; the compatibility and format-info endpoints work with any image. Other plugins are added with the Dockerfile's build arguments or in a derived image, see [Installing a plugin](docs/integration.md#installing-a-plugin). At startup the service logs the formats of the installed plugins. Mappings, shared data and local ontologies are mounted at run time:
 
 ```shell
 docker run -p 8000:8000 \
@@ -99,12 +106,14 @@ docker run -p 8000:8000 \
   -v /home/user/data:/data:ro \
   -e SOS_FFS_SHARED_DIRS=/home/user/data:/data \
   -v /home/user/ontology:/ontology:ro \
-  ghcr.io/dfg-sos/file-format-service:latest
+  ghcr.io/dfg-sos/file-format-service-eo:latest
 ```
 
 Local ontologies are then referenced as `file:///ontology/<file>.owl`. `docker-compose.yml` runs the same image with these mounts as commented examples (`docker compose up -d`).
 
 ## Development
+
+The tests use the EO plugin, which the extra `dev` includes.
 
 ```shell
 uv run pytest                      # all tests

@@ -436,12 +436,18 @@ sdist = { url = "https://files.pythonhosted.org/packages/51/e0/71b63839cc609e1d6
 
 [[package]]
 name = "format-validator"
-version = "0.4.0"
-source = { git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.4.0#aa5a94330440fa61a768f3c8253e648210a1d503" }
+version = "0.5.0"
+source = { git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.5.0#4a02d29bb9af9675b27cc4292ea7e82579f0e5f2" }
+
+[[package]]
+name = "format-validator-eo"
+version = "0.1.0"
+source = { git = "https://github.com/dfg-sos/file-format-validator.git?subdirectory=plugins%2Feo&rev=v0.5.0#4a02d29bb9af9675b27cc4292ea7e82579f0e5f2" }
 dependencies = [
     { name = "cfgrib" },
     { name = "eccodeslib" },
     { name = "fiona" },
+    { name = "format-validator" },
     { name = "geopandas" },
     { name = "netcdf4" },
     { name = "pandas" },
@@ -1234,7 +1240,7 @@ wheels = [
 
 [[package]]
 name = "sos-file-format-service"
-version = "0.3.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -1250,18 +1256,23 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "format-validator-eo" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
+eo = [
+    { name = "format-validator-eo" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
     { name = "fastapi" },
-    { name = "format-validator", git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.4.0" },
+    { name = "format-validator", git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.5.0" },
+    { name = "format-validator-eo", marker = "extra == 'eo'", git = "https://github.com/dfg-sos/file-format-validator.git?subdirectory=plugins%2Feo&rev=v0.5.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pydantic" },
@@ -1272,9 +1283,10 @@ requires-dist = [
     { name = "python-multipart" },
     { name = "rdflib" },
     { name = "ruff", marker = "extra == 'dev'" },
+    { name = "sos-file-format-service", extras = ["eo"], marker = "extra == 'dev'" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["dev"]
+provides-extras = ["eo", "dev"]
 
 [[package]]
 name = "starlette"

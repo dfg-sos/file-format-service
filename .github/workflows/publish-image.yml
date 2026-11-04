@@ -16,7 +16,8 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Same GDAL base as the image; fiona compiles against it.
+    # The tests need the EO plugin (extra `dev` includes `eo`): same GDAL base as the EO image;
+    # fiona compiles against it.
     container: ghcr.io/osgeo/gdal:ubuntu-small-3.13.3
     env:
       UV_PYTHON: /usr/bin/python3
@@ -32,9 +33,22 @@ jobs:
       - run: uv sync --frozen --extra dev
       - run: uv run pytest
 
+  # The core image (no formats) and the image with the EO plugin, see the Dockerfile.
   image:
     needs: test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # expected-log: a startup log line the smoke test requires, e.g. the plugin's formats.
+          - suffix: ""
+            build-args: ""
+            expected-log: "No validator plugin installed"
+          - suffix: "-eo"
+            expected-log: "Formats with a validator: .*'GeoTIFF'"
+            build-args: |
+              BASE_IMAGE=ghcr.io/osgeo/gdal:ubuntu-small-3.13.3
+              EXTRAS=eo
     permissions:
       contents: read
       packages: write
@@ -53,7 +67,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.IMAGE }}
+          images: ${{ env.IMAGE }}${{ matrix.suffix }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
@@ -65,20 +79,28 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
+          build-args: ${{ matrix.build-args }}
           load: true
           tags: ffs-smoke-test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=image${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=image${{ matrix.suffix }}
 
       - name: Smoke test
         run: |
           docker run -d --name ffs -p 8000:8000 ffs-smoke-test
           for i in $(seq 1 30); do
-            curl -fsS http://localhost:8000/health && exit 0
+            if curl -fsS http://localhost:8000/health; then
+              # The plugins are loaded before the startup completes, so their log is complete.
+              docker logs ffs 2>&1 | grep -E "$EXPECTED_LOG" && exit 0
+              echo "Startup log lacks: $EXPECTED_LOG"
+              break
+            fi
             sleep 2
           done
           docker logs ffs
           exit 1
+        env:
+          EXPECTED_LOG: ${{ matrix.expected-log }}
 
       # semver tags also get `latest` (metadata-action's latest=auto); a manual
       # run on a branch other than main yields no tags and pushes nothing.
@@ -88,7 +110,8 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
+          build-args: ${{ matrix.build-args }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
+          cache-from: type=gha,scope=image${{ matrix.suffix }}
