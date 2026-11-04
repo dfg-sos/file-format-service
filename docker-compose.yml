@@ -1,6 +1,6 @@
 services:
   api:
-    image: ghcr.io/dfg-sos/file-format-service:latest
+    image: ghcr.io/dfg-sos/file-format-service-eo:latest  # file-format-service: core only, no formats
     ports:
       - "8000:8000"
     platform: linux/amd64

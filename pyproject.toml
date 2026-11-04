@@ -9,7 +9,7 @@ where = ["src"]
 name = "SOS-File-Format-Service"
 version = "0.3.0"
 requires-python = ">=3.14"
-description = "REST API service for validating Earth Observation (EO) file formats and checking ontology-based format compatibility."
+description = "REST API service for validating files against formats of an ontology and checking ontology-based format compatibility. Validators for the formats come from format-validator plugins."
 readme = "README.md"
 authors = [
     { name = "Lorenz Gruber", email = "lorenz.gruber@uni-wuerzburg.de" },
@@ -24,11 +24,18 @@ dependencies = [
     "aiofiles",
     "httpx>=0.27",
     "rdflib",
-    "format-validator @ git+https://github.com/dfg-sos/file-format-validator.git@v0.4.0",
+    # The validator core defines no formats: install plugins next to it, e.g. the extra `eo`
+    # or the Dockerfile's PLUGINS build argument.
+    "format-validator @ git+https://github.com/dfg-sos/file-format-validator.git@v0.5.0",
 ]
 
 [project.optional-dependencies]
+# The EO formats plugin, for local runs and the tests.
+eo = [
+    "format-validator-eo @ git+https://github.com/dfg-sos/file-format-validator.git@v0.5.0#subdirectory=plugins/eo",
+]
 dev = [
+    "SOS-File-Format-Service[eo]",
     "pytest>=8",
     "pytest-asyncio>=0.24",
     "pytest-cov",
