@@ -73,13 +73,16 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
-      # Build into the local daemon first so a broken image is never pushed.
+      # Build into the local daemon first so a broken image is never pushed. VERSION is the
+      # version metadata-action derives from the ref: 1.2.3 for tag v1.2.3, else the branch or pr-N.
       - name: Build
         uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64
-          build-args: ${{ matrix.build-args }}
+          build-args: |
+            ${{ matrix.build-args }}
+            VERSION=${{ steps.meta.outputs.version }}
           load: true
           tags: ffs-smoke-test
           cache-from: type=gha,scope=image${{ matrix.suffix }}
@@ -110,7 +113,9 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
-          build-args: ${{ matrix.build-args }}
+          build-args: |
+            ${{ matrix.build-args }}
+            VERSION=${{ steps.meta.outputs.version }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
