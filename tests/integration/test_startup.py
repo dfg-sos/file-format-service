@@ -8,7 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.app import create_app
-from api.dependencies import get_format_translator, load_format_translator
+from api.dependencies import get_format_translator
+from service.mappings import load_format_translator
 
 from ..conftest import MAPPINGS
 

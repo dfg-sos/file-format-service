@@ -77,6 +77,7 @@ Environment variables, prefixed with `SOS_FFS_`:
 | `SOS_FFS_HOST` | `0.0.0.0` | Bind host |
 | `SOS_FFS_PORT` | `8000` | Bind port |
 | `SOS_FFS_SHARED_DIRS` | *(empty)* | Directories in which clients may reference files for `/validate/metadata/local` and `/validate/content/local`; empty disables these endpoints. Comma-separated absolute paths, `host_path` or `host_path:container_path` when the service sees the directory elsewhere (paths containing `:` or `,` are not supported). |
+| `SOS_FFS_MAPPINGS_DIR` | `mappings/` (`/app/mappings` in the image) | Directory of the mapping files |
 
 ```bash
 SOS_FFS_SHARED_DIRS=/home/user/data,/scratch      # service runs directly on the host

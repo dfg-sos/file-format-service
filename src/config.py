@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     # endpoints; empty disables them. Paths containing ``:`` or ``,`` are not
     # supported.
     shared_dirs: Annotated[list[SharedDir], NoDecode] = []
+    # Directory of the mapping files (ontology format ID -> validator format ID).
+    mappings_dir: Path = MAPPINGS_DIR
 
     @field_validator("shared_dirs", mode="before")
     @classmethod

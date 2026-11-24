@@ -436,13 +436,13 @@ sdist = { url = "https://files.pythonhosted.org/packages/51/e0/71b63839cc609e1d6
 
 [[package]]
 name = "format-validator"
-version = "0.5.0"
-source = { git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.5.0#4a02d29bb9af9675b27cc4292ea7e82579f0e5f2" }
+version = "0.6.0"
+source = { git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.6.0#92cf58ec21e0257d3c8785aad67c2293963c1bb3" }
 
 [[package]]
 name = "format-validator-eo"
-version = "0.1.0"
-source = { git = "https://github.com/dfg-sos/file-format-validator.git?subdirectory=plugins%2Feo&rev=v0.5.0#4a02d29bb9af9675b27cc4292ea7e82579f0e5f2" }
+version = "0.1.1"
+source = { git = "https://github.com/dfg-sos/file-format-validator.git?subdirectory=plugins%2Feo&rev=v0.6.0#92cf58ec21e0257d3c8785aad67c2293963c1bb3" }
 dependencies = [
     { name = "cfgrib" },
     { name = "eccodeslib" },
@@ -1271,8 +1271,8 @@ eo = [
 requires-dist = [
     { name = "aiofiles" },
     { name = "fastapi" },
-    { name = "format-validator", git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.5.0" },
-    { name = "format-validator-eo", marker = "extra == 'eo'", git = "https://github.com/dfg-sos/file-format-validator.git?subdirectory=plugins%2Feo&rev=v0.5.0" },
+    { name = "format-validator", git = "https://github.com/dfg-sos/file-format-validator.git?rev=v0.6.0" },
+    { name = "format-validator-eo", marker = "extra == 'eo'", git = "https://github.com/dfg-sos/file-format-validator.git?subdirectory=plugins%2Feo&rev=v0.6.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pydantic" },
