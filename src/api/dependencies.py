@@ -5,7 +5,6 @@ routers can receive them via ``Depends`` without manual construction.
 """
 
 import json
-import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -14,12 +13,11 @@ from format_validator import FormatTranslator
 from pydantic import ValidationError
 
 from api.schemas.validation import FileFormatValidationRequest, MetadataValidationRequest
-from config import MAPPINGS_DIR, Settings
+from config import Settings
 from core import FormatOntology
+from service.mappings import load_format_translator
 from service.ontology_registry import OntologyRegistry
 from service.shared_paths import SharedPathResolver
-
-logger = logging.getLogger(__name__)
 
 
 @lru_cache
@@ -28,40 +26,10 @@ def get_settings() -> Settings:
     return Settings()
 
 
-def load_format_translator(mappings_dir: Path) -> FormatTranslator:
-    """Load the mapping files (``*.json``) in ``mappings_dir`` into one translator.
-
-    Each file maps the format identifiers of the ontology ``ontology_uri`` to
-    validator format identifiers. The translator is keyed by the full format
-    IRI, ``ontology_uri`` followed by the identifier. A missing or empty
-    directory yields a translator without mappings, which rejects every
-    format; this is logged as a warning.
-
-    Raises:
-        ValueError: Two files map the same IRI to different formats, or a
-            file maps to a format identifier the validator does not know.
-    """
-    translator = FormatTranslator({})
-    namespaces = []
-    for path in sorted(mappings_dir.glob("*.json")):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        namespace = data["ontology_uri"]
-        namespaces.append(namespace)
-        try:
-            translator |= FormatTranslator({namespace + identifier: fid for identifier, fid in data["mappings"].items()})
-        except ValueError as exc:
-            raise ValueError(f"{path.name}: {exc}") from exc
-    if namespaces:
-        logger.info("Loaded format mappings for ontologies: %s", namespaces)
-    else:
-        logger.warning("No mapping files (*.json) found in %s, validation rejects every format", mappings_dir)
-    return translator
-
-
 @lru_cache
 def get_format_translator() -> FormatTranslator:
-    """Return cached ``FormatTranslator`` with the mappings in ``MAPPINGS_DIR``."""
-    return load_format_translator(MAPPINGS_DIR)
+    """Return cached ``FormatTranslator`` with the mappings in ``Settings.mappings_dir``."""
+    return load_format_translator(get_settings().mappings_dir)
 
 
 @lru_cache

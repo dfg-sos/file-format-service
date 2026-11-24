@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from format_validator import FormatIdentifier, FormatTranslator
 
-from api.dependencies import load_format_translator
 from core import FormatOntology
+from service.mappings import load_format_translator
 
 from ..conftest import EXAMPLE_NAMESPACE, MAPPINGS
 

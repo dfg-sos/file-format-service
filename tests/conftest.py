@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from format_validator import FormatTranslator
 
-from api.dependencies import load_format_translator
 from core import FormatOntology
+from service.mappings import load_format_translator
 
 FIXTURES = Path(__file__).parent / "fixtures"
 ONTOLOGIES = FIXTURES / "ontologies"

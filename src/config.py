@@ -46,7 +46,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="SOS_FFS_")
 
     app_name: str = "SOS File Format Service"
-    app_version: str = "0.1.0"
+    # Shown in the OpenAPI docs; the image sets it from its build argument VERSION.
+    app_version: str = "dev"
     host: str = "0.0.0.0"
     port: int = 8000
     # Comma-separated ``host_path[:container_path]`` entries. Files below these
@@ -54,6 +55,8 @@ class Settings(BaseSettings):
     # endpoints; empty disables them. Paths containing ``:`` or ``,`` are not
     # supported.
     shared_dirs: Annotated[list[SharedDir], NoDecode] = []
+    # Directory of the mapping files (ontology format ID -> validator format ID).
+    mappings_dir: Path = MAPPINGS_DIR
 
     @field_validator("shared_dirs", mode="before")
     @classmethod

@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "SOS-File-Format-Service"
-version = "0.4.0"
+version = "0.5.0"
 requires-python = ">=3.14"
 description = "REST API service for validating files against formats of an ontology and checking ontology-based format compatibility. Validators for the formats come from format-validator plugins."
 readme = "README.md"
@@ -26,13 +26,13 @@ dependencies = [
     "rdflib",
     # The validator core defines no formats: install plugins next to it, e.g. the extra `eo`
     # or the Dockerfile's PLUGINS build argument.
-    "format-validator @ git+https://github.com/dfg-sos/file-format-validator.git@v0.5.0",
+    "format-validator @ git+https://github.com/dfg-sos/file-format-validator.git@v0.6.0",
 ]
 
 [project.optional-dependencies]
 # The EO formats plugin, for local runs and the tests.
 eo = [
-    "format-validator-eo @ git+https://github.com/dfg-sos/file-format-validator.git@v0.5.0#subdirectory=plugins/eo",
+    "format-validator-eo @ git+https://github.com/dfg-sos/file-format-validator.git@v0.6.0#subdirectory=plugins/eo",
 ]
 dev = [
     "SOS-File-Format-Service[eo]",

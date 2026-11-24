@@ -8,6 +8,7 @@
 #   git+https://…#subdirectory=…); their dependencies are resolved at build time, not locked.
 # BASE_IMAGE: the EO plugin needs the GDAL image: fiona has no cp314 wheel yet and is compiled
 #   against the GDAL of the base image.
+# VERSION: the service version shown in the OpenAPI docs, set by CI for v* tags; default dev.
 ARG BASE_IMAGE=python:3.14-slim
 
 FROM ${BASE_IMAGE} AS build
@@ -38,5 +39,8 @@ COPY --from=build /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 WORKDIR /app
 COPY src/ src/
+ARG VERSION=dev
+# Empty (e.g. a CI build of a branch) counts as unset.
+ENV SOS_FFS_APP_VERSION=${VERSION:-dev}
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--app-dir", "src", "--host", "0.0.0.0", "--port", "8000"]
